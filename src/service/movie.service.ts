@@ -84,6 +84,14 @@ class MovieService {
     this.movies[index] = merged;
     return merged;
   }
+
+  public deleteMovie(id: string): Movie | undefined {
+    const index = this.movies.findIndex((m) => m.id === id);
+    if (index === -1) return undefined;
+
+    const [removed] = this.movies.splice(index, 1);
+    return removed;
+  }
 }
 
 export const movieService = new MovieService();
