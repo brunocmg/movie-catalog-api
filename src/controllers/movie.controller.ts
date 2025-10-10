@@ -44,13 +44,34 @@ export const update = (req: Request, res: Response) => {
   if (!isUuid(id))
     return res.status(400).json({ message: "Invalid id format" });
 
-  const {name, genre, year} = req.body
+  const { name, genre, year } = req.body;
 
   if (!name || !genre || !year) {
-    return res.status(400).json({message: "Name, gender and year are required"})
+    return res
+      .status(400)
+      .json({ message: "Name, gender and year are required" });
   }
 
   const updated = movieService.update(id, { name, genre, year });
   if (!update) return res.status(404).json({ message: "Not found" });
   return res.status(200).json(updated);
+};
+
+export const patch = (req: Request, res: Response) => {
+  const id = req.params.id;
+  if (!id) {
+    return res.status(400).json({ message: 'Param "id" is required.' });
+  }
+  if (!isUuid(id))
+    return res.status(400).json({ message: "Invalid id format" });
+
+  const dto: Partial<{ name: string; genre: string; year: string }> = {};
+  if ("name" in req.body) dto.name = req.body.name;
+  if ("genre" in req.body) dto.genre = req.body.genre;
+  if ("year" in req.body) dto.year = req.body.year;
+
+  const patched = movieService.patch(id, dto);
+  if (!patched) return res.status(404).json({ message: "Not found." });
+
+  return res.status(200).json(patched);
 };
