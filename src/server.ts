@@ -5,7 +5,7 @@ import {
   findById as findMovieById,
   update as updateMovie,
   patch as updatePartialMovie,
-  delete as deleteMovie,
+  deleteMovie as deleteMovie,
 } from "./controllers/movie.controller";
 
 const app = express();
