@@ -1,3 +1,4 @@
+import { deleteAllMovies } from "../controllers/movie.controller";
 import { Movie } from "../models/movie.model";
 
 class MovieService {
@@ -83,6 +84,18 @@ class MovieService {
 
     this.movies[index] = merged;
     return merged;
+  }
+
+  public deleteMovie(id: string): Movie | undefined {
+    const index = this.movies.findIndex((m) => m.id === id);
+    if (index === -1) return undefined;
+
+    const [removed] = this.movies.splice(index, 1);
+    return removed;
+  }
+
+  public deleteAllMovies(): void {
+    this.movies.length = 0;
   }
 }
 
