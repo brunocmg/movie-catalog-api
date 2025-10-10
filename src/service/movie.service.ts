@@ -1,3 +1,4 @@
+import { deleteAllMovies } from "../controllers/movie.controller";
 import { Movie } from "../models/movie.model";
 
 class MovieService {
@@ -91,6 +92,10 @@ class MovieService {
 
     const [removed] = this.movies.splice(index, 1);
     return removed;
+  }
+
+  public deleteAllMovies(): void {
+    this.movies.length = 0;
   }
 }
 
