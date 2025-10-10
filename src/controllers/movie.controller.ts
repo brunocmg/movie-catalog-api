@@ -89,3 +89,10 @@ export const deleteMovie = (req: Request, res: Response) => {
 
   return res.status(200).json(deleted);
 };
+
+export const deleteAllMovies = (req: Request, res: Response) => {
+  movieService.deleteAllMovies();
+
+  const removed = movieService.deleteAllMovies();
+  return res.status(200).json(removed);
+};
