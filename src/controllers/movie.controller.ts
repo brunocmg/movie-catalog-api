@@ -75,3 +75,17 @@ export const patch = (req: Request, res: Response) => {
 
   return res.status(200).json(patched);
 };
+
+export const deleteMovie = (req: Request, res: Response) => {
+  const id = req.params.id;
+  if (!id) {
+    return res.status(400).json({ message: 'Param "id" is required.' });
+  }
+  if (!isUuid(id))
+    return res.status(400).json({ message: "Invalid id format" });
+
+  const deleted = movieService.deleteMovie(id);
+  if (!deleted) return res.status(404).json({ message: "Not found." });
+
+  return res.status(200).json(deleted);
+};
