@@ -22,6 +22,20 @@ class MovieService {
         }
     ];
 
+    public create(name: string, genre: string, year: number): Movie {
+        const id = crypto.randomUUID();
+        const newMovie: Movie ={
+            id,
+            name,
+            genre,
+            year,
+        };
+
+        this.movies.push(newMovie);
+
+        return newMovie;
+    }
+
     public findAll(): Movie[] {
         return this.movies;
     }

@@ -1,0 +1,16 @@
+### Listar todos os filmes (GET)
+# @name getAllMovies
+GET http://localhost:3000/movies
+
+### ---------------------------------
+
+### Criar um novo filme (POST)
+# @name createMovie
+POST http://localhost:3000/movies
+Content-Type: application/json
+
+{
+  "name": "O Senhor dos Anéis: A Sociedade do Anel",
+  "genre": "Fantasia/Aventura",
+  "year": 2001
+}
