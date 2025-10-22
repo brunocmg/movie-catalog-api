@@ -28,19 +28,29 @@ export const findAll = async (req: Request, res: Response) => {
   }
 };
 
-// export const findById = (req: Request, res: Response) => {
-//   const id = req.params.id;
-//   if (!id) {
-//     return res.status(400).json({ message: 'Param "id" is required.' });
-//   }
-//   if (!isUuid(id))
-//     return res.status(400).json({ message: "Invalid id format" });
-//   const movie = movieService.findById(id);
-//   if (!movie) {
-//     return res.status(404).json({ message: `Movie with id ${id} not found.` });
-//   }
-//   return res.status(200).json(movie);
-// };
+export const findById = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  if (!id) {
+    return res.status(400).json({ message: 'Param "id" is required.' });
+  }
+
+  const idNum = Number(id);
+  if (!Number.isInteger(idNum)) {
+    return res.status(400).json({ message: 'Param "id" must be an integer.' });
+  }
+
+  try {
+    const movie = await movieService.findById(idNum);
+    if (!movie) {
+      return res
+        .status(404)
+        .json({ message: `Movie with id ${idNum} not found.` });
+    }
+    return res.status(200).json(movie);
+  } catch (err) {
+    return res.status(500).json({ message: (err as Error).message });
+  }
+};
 
 // export const update = (req: Request, res: Response) => {
 //   const id = req.params.id;
