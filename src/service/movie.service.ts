@@ -1,5 +1,7 @@
 import { deleteAllMovies } from "../controllers/movie.controller";
 import { Movie } from "../models/movie.model";
+import { PrismaClient } from "../generated/prisma";
+import { prisma } from "../lib/prisma";
 
 class MovieService {
   public create(name: string, genre: string, year: number): Movie {
