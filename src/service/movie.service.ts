@@ -17,9 +17,9 @@ class MovieService {
     return newMovie;
   }
 
-  // public findAll(): Movie[] {
-  //   return this.movies;
-  // }
+  public async findAll() {
+    return prisma.movie.findMany();
+  }
 
   // public findById(id: string): Movie | undefined {
   //   return this.movies.find((m) => m.id === id);

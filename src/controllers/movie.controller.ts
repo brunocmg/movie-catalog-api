@@ -2,12 +2,6 @@ import { Request, Response } from "express";
 import { movieService } from "../service/movie.service";
 import { validate as isUuid } from "uuid";
 
-// export const findAll = (req: Request, res: Response) => {
-//   const movies = movieService.findAll();
-
-//   return res.status(200).json(movies);
-// };
-
 export const create = async (req: Request, res: Response) => {
   const { name, genre, director, year } = req.body;
 
@@ -20,6 +14,15 @@ export const create = async (req: Request, res: Response) => {
   try {
     const newMovie = await movieService.create(name, genre, director, year);
     return res.status(201).json(newMovie);
+  } catch (err) {
+    return res.status(500).json({ message: (err as Error).message });
+  }
+};
+
+export const findAll = async (req: Request, res: Response) => {
+  try {
+    const movies = await movieService.findAll();
+    return res.status(201).json(movies);
   } catch (err) {
     return res.status(500).json({ message: (err as Error).message });
   }
