@@ -1,4 +1,5 @@
 import express from "express";
+import "dotenv/config";
 import {
   findAll as findAllMovies,
   create as createMovie,
