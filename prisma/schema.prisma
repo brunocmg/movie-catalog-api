@@ -19,7 +19,7 @@ model Movie{
   name        String
   genre       String?
   director    String? 
-  year        Int?
+  year        Int
 
   @@map("movies")
 }
