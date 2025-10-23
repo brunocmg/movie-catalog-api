@@ -29,13 +29,6 @@ class MovieService {
     const index = await prisma.movie.findUnique({ where: { id: id } });
     if (!index) return undefined;
 
-    const updated = {
-      id,
-      name: dto.name,
-      genre: dto.genre,
-      director: dto.director,
-      year: dto.year,
-    };
     return prisma.movie.update({ where: { id }, data: dto });
   }
 
