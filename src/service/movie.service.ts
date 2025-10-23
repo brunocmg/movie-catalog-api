@@ -1,4 +1,3 @@
-import { PrismaClient } from "../generated/prisma";
 import { prisma } from "../lib/prisma";
 
 class MovieService {
