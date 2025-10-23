@@ -1,5 +1,3 @@
-// import { deleteAllMovies } from "../controllers/movie.controller";
-import { Movie } from "../models/movie.model";
 import { PrismaClient } from "../generated/prisma";
 import { prisma } from "../lib/prisma";
 
@@ -59,8 +57,7 @@ class MovieService {
     const index = await prisma.movie.findUnique({ where: { id: id } });
     if (!index) return undefined;
 
-    const removed = prisma.movie.delete({where: {id: index.id}});
-    return removed;
+    return await prisma.movie.delete({where: {id: index.id}});
   }
 
   public async deleteAllMovies() {
