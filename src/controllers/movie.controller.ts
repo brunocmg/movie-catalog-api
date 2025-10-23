@@ -117,9 +117,11 @@ export const deleteMovie = (req: Request, res: Response) => {
   return res.status(200).json(deleted);
 };
 
-// export const deleteAllMovies = (req: Request, res: Response) => {
-//   movieService.deleteAllMovies();
-
-//   const removed = movieService.deleteAllMovies();
-//   return res.status(200).json(removed);
-// };
+export const deleteAllMovies = async (_req: Request, res: Response) => {
+  try {
+    const result = await movieService.deleteAllMovies();
+    return res.status(200).json({ deleted: result.count });
+  } catch (err) {
+    return res.status(500).json({ message: (err as Error).message });
+  }
+};

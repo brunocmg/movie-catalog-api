@@ -63,9 +63,9 @@ class MovieService {
     return removed;
   }
 
-  // public deleteAllMovies(): void {
-  //   this.movies.length = 0;
-  // }
+  public async deleteAllMovies() {
+    return await prisma.movie.deleteMany()
+  }
 }
 
 export const movieService = new MovieService();
