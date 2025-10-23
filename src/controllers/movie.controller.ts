@@ -1,6 +1,5 @@
 import { Request, Response } from "express";
 import { movieService } from "../service/movie.service";
-import { validate as isUuid } from "uuid";
 
 export const create = async (req: Request, res: Response) => {
   const { name, genre, director, year } = req.body;
