@@ -113,7 +113,7 @@ export const patch = async (req: Request, res: Response) => {
   }
 };
 
-export const deleteMovie = (req: Request, res: Response) => {
+export const deleteMovie = async (req: Request, res: Response) => {
   const id = req.params.id;
   const idNum = Number(id);
   if (!id) {
@@ -121,7 +121,7 @@ export const deleteMovie = (req: Request, res: Response) => {
   }
 
   try {
-    const deleted = movieService.deleteMovie(idNum);
+    const deleted = await movieService.deleteMovie(idNum);
     if (!deleted)
       return res
         .status(404)
