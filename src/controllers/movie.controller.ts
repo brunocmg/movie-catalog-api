@@ -63,7 +63,7 @@ export const update = async (req: Request, res: Response) => {
   if (!name || !genre || !director || !year) {
     return res
       .status(400)
-      .json({ message: "Name, gender, director and year are required" });
+      .json({ message: "Name, genre, director and year are required" });
   }
   try {
     const updated = await movieService.update(idNum, {
