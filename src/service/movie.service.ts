@@ -19,7 +19,7 @@ class MovieService {
   }
 
   public async findById(id: number) {
-    return prisma.movie.findFirst({ where: { id: id } });
+    return prisma.movie.findUnique({ where: { id: id } });
   }
 
   public async update(
