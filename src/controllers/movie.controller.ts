@@ -7,7 +7,7 @@ export const create = async (req: Request, res: Response) => {
 
   if (!name || !year) {
     return res.status(400).json({
-      message: "O campo de nome e ano são obrigatórios.",
+      message: "The name and year are required.",
     });
   }
 
@@ -73,7 +73,10 @@ export const update = async (req: Request, res: Response) => {
       director,
       year,
     });
-    if (!updated) return res.status(404).json({ message: "Not found" });
+    if (!updated)
+      return res
+        .status(404)
+        .json({ message: `Movie with id ${idNum} not found.` });
     return res.status(200).json(updated);
   } catch (err) {
     return res.status(500).json({ message: (err as Error).message });
@@ -87,7 +90,12 @@ export const patch = async (req: Request, res: Response) => {
   }
   const idNum = Number(id);
 
-  const dto: Partial<{ name: string; genre: string; director: string; year: number }> = {};
+  const dto: Partial<{
+    name: string;
+    genre: string;
+    director: string;
+    year: number;
+  }> = {};
   if ("name" in req.body) dto.name = req.body.name;
   if ("genre" in req.body) dto.genre = req.body.genre;
   if ("director" in req.body) dto.director = req.body.director;
@@ -96,7 +104,9 @@ export const patch = async (req: Request, res: Response) => {
   try {
     const patched = await movieService.patch(idNum, dto);
     if (!patched) {
-      return res.status(404).json({ message: `Movie with id ${idNum} not found.` });
+      return res
+        .status(404)
+        .json({ message: `Movie with id ${idNum} not found.` });
     }
     return res.status(200).json(patched);
   } catch (err) {
@@ -112,7 +122,10 @@ export const deleteMovie = (req: Request, res: Response) => {
   }
 
   const deleted = movieService.deleteMovie(idNum);
-  if (!deleted) return res.status(404).json({ message: "Not found." });
+  if (!deleted)
+    return res
+      .status(404)
+      .json({ message: `Movie with id ${idNum} not found.` });
 
   return res.status(200).json(deleted);
 };
