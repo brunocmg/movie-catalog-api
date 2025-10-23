@@ -18,29 +18,29 @@ class MovieService {
   }
 
   public async findAll() {
-    return prisma.movie.findMany();
+    return prisma.movie.findMany({ orderBy: { id: "asc" } });
   }
 
   public async findById(id: number) {
     return prisma.movie.findFirst({ where: { id: id } });
   }
 
-  // public update(
-  //   id: string,
-  //   dto: { name: string; genre: string; year: number }
-  // ): Movie | undefined {
-  //   const index = this.movies.findIndex((m) => m.id === id);
-  //   if (index === -1) return undefined;
+  public async update(
+    id: number,
+    dto: { name: string; genre: string; director: string; year: number }
+  ) {
+    const index = await prisma.movie.findUnique({ where: { id: id } });
+    if (!index) return undefined;
 
-  //   const updated: Movie = {
-  //     id,
-  //     name: dto.name,
-  //     genre: dto.genre,
-  //     year: dto.year,
-  //   };
-  //   this.movies[index] = updated;
-  //   return updated;
-  // }
+    const updated = {
+      id,
+      name: dto.name,
+      genre: dto.genre,
+      director: dto.director,
+      year: dto.year,
+    };
+    return prisma.movie.update({ where: { id }, data: dto });
+  }
 
   // public patch(
   //   id: string,

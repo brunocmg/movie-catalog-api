@@ -52,26 +52,28 @@ export const findById = async (req: Request, res: Response) => {
   }
 };
 
-// export const update = (req: Request, res: Response) => {
-//   const id = req.params.id;
-//   if (!id) {
-//     return res.status(400).json({ message: 'Param "id" is required.' });
-//   }
-//   if (!isUuid(id))
-//     return res.status(400).json({ message: "Invalid id format" });
+export const update = async (req: Request, res: Response) => {
+  const id = req.params.id;
+  if (!id) {
+    return res.status(400).json({ message: 'Param "id" is required.' });
+  }
+  const idNum = Number(id);
 
-//   const { name, genre, year } = req.body;
+  const { name, genre, director, year } = req.body;
 
-//   if (!name || !genre || !year) {
-//     return res
-//       .status(400)
-//       .json({ message: "Name, gender and year are required" });
-//   }
-
-//   const updated = movieService.update(id, { name, genre, year });
-//   if (!update) return res.status(404).json({ message: "Not found" });
-//   return res.status(200).json(updated);
-// };
+  if (!name || !genre || !director || !year) {
+    return res
+      .status(400)
+      .json({ message: "Name, gender, director and year are required" });
+  }
+  try {
+    const updated = await movieService.update(idNum, { name, genre, director, year });
+    if (!updated) return res.status(404).json({ message: "Not found" });
+    return res.status(200).json(updated);
+  } catch (err) {
+    return res.status(500).json({ message: (err as Error).message });
+  }
+};
 
 // export const patch = (req: Request, res: Response) => {
 //   const id = req.params.id;
