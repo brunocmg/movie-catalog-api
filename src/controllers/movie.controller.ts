@@ -67,7 +67,12 @@ export const update = async (req: Request, res: Response) => {
       .json({ message: "Name, gender, director and year are required" });
   }
   try {
-    const updated = await movieService.update(idNum, { name, genre, director, year });
+    const updated = await movieService.update(idNum, {
+      name,
+      genre,
+      director,
+      year,
+    });
     if (!updated) return res.status(404).json({ message: "Not found" });
     return res.status(200).json(updated);
   } catch (err) {
@@ -75,24 +80,29 @@ export const update = async (req: Request, res: Response) => {
   }
 };
 
-// export const patch = (req: Request, res: Response) => {
-//   const id = req.params.id;
-//   if (!id) {
-//     return res.status(400).json({ message: 'Param "id" is required.' });
-//   }
-//   if (!isUuid(id))
-//     return res.status(400).json({ message: "Invalid id format" });
+export const patch = async (req: Request, res: Response) => {
+  const id = req.params.id;
+  if (!id) {
+    return res.status(400).json({ message: 'Param "id" is required.' });
+  }
+  const idNum = Number(id);
 
-//   const dto: Partial<{ name: string; genre: string; year: string }> = {};
-//   if ("name" in req.body) dto.name = req.body.name;
-//   if ("genre" in req.body) dto.genre = req.body.genre;
-//   if ("year" in req.body) dto.year = req.body.year;
+  const dto: Partial<{ name: string; genre: string; director: string; year: number }> = {};
+  if ("name" in req.body) dto.name = req.body.name;
+  if ("genre" in req.body) dto.genre = req.body.genre;
+  if ("director" in req.body) dto.director = req.body.director;
+  if ("year" in req.body) dto.year = req.body.year;
 
-//   const patched = movieService.patch(id, dto);
-//   if (!patched) return res.status(404).json({ message: "Not found." });
-
-//   return res.status(200).json(patched);
-// };
+  try {
+    const patched = await movieService.patch(idNum, dto);
+    if (!patched) {
+      return res.status(404).json({ message: `Movie with id ${idNum} not found.` });
+    }
+    return res.status(200).json(patched);
+  } catch (err) {
+    return res.status(500).json({ message: (err as Error).message });
+  }
+};
 
 // export const deleteMovie = (req: Request, res: Response) => {
 //   const id = req.params.id;

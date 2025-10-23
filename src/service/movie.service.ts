@@ -42,29 +42,18 @@ class MovieService {
     return prisma.movie.update({ where: { id }, data: dto });
   }
 
-  // public patch(
-  //   id: string,
-  //   dto: Partial<{ name: string; genre: string; year: string }>
-  // ): Movie | undefined {
-  //   const index = this.movies.findIndex((m) => m.id === id);
-  //   if (index === -1) return undefined;
+  public async patch(
+    id: number,
+    dto: Partial<{ name: string; genre: string; director: string; year: number }>
+  ) {
+    const index = await prisma.movie.findUnique({ where: { id: id } });
+    if (!index) return undefined;
 
-  //   const existing = this.movies[index];
-  //   if (!existing) return undefined;
-
-  //   const merged: Movie = {
-  //     id: existing.id,
-  //     name: dto.name !== undefined ? dto.name : existing.name,
-  //     genre: dto.genre !== undefined ? dto.genre : existing.genre,
-  //     year:
-  //       dto.year !== undefined
-  //         ? (dto.year as unknown as number)
-  //         : existing.year,
-  //   };
-
-  //   this.movies[index] = merged;
-  //   return merged;
-  // }
+    return prisma.movie.update({
+      where: { id },
+      data: dto
+    });
+  }
 
   // public deleteMovie(id: string): Movie | undefined {
   //   const index = this.movies.findIndex((m) => m.id === id);
