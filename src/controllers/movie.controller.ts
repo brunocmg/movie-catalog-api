@@ -22,7 +22,7 @@ export const create = async (req: Request, res: Response) => {
 export const findAll = async (req: Request, res: Response) => {
   try {
     const movies = await movieService.findAll();
-    return res.status(201).json(movies);
+    return res.status(200).json(movies);
   } catch (err) {
     return res.status(500).json({ message: (err as Error).message });
   }
