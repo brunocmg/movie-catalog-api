@@ -121,13 +121,17 @@ export const deleteMovie = (req: Request, res: Response) => {
     return res.status(400).json({ message: 'Param "id" is required.' });
   }
 
-  const deleted = movieService.deleteMovie(idNum);
-  if (!deleted)
-    return res
-      .status(404)
-      .json({ message: `Movie with id ${idNum} not found.` });
+  try {
+    const deleted = movieService.deleteMovie(idNum);
+    if (!deleted)
+      return res
+        .status(404)
+        .json({ message: `Movie with id ${idNum} not found.` });
 
-  return res.status(200).json(deleted);
+    return res.status(200).json(deleted);
+  } catch (err) {
+    return res.status(500).json({ message: (err as Error).message });
+  }
 };
 
 export const deleteAllMovies = async (_req: Request, res: Response) => {
