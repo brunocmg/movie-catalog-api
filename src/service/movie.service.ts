@@ -55,13 +55,13 @@ class MovieService {
     });
   }
 
-  // public deleteMovie(id: string): Movie | undefined {
-  //   const index = this.movies.findIndex((m) => m.id === id);
-  //   if (index === -1) return undefined;
+  public async deleteMovie(id: number) {
+    const index = await prisma.movie.findUnique({ where: { id: id } });
+    if (!index) return undefined;
 
-  //   const [removed] = this.movies.splice(index, 1);
-  //   return removed;
-  // }
+    const removed = prisma.movie.delete({where: {id: index.id}});
+    return removed;
+  }
 
   // public deleteAllMovies(): void {
   //   this.movies.length = 0;
