@@ -16,7 +16,10 @@ datasource db {
 
 model Movie{
   id          Int @id @default(autoincrement())
-  name        String 
-  genre       String 
+  name        String
+  genre       String?
+  director    String? 
   year        Int
+
+  @@map("movies")
 }
