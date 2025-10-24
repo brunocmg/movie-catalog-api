@@ -1,98 +1,143 @@
 import { Request, Response } from "express";
 import { movieService } from "../service/movie.service";
-import { validate as isUuid } from "uuid";
 
-export const findAll = (req: Request, res: Response) => {
-  const movies = movieService.findAll();
+export const create = async (req: Request, res: Response) => {
+  const { name, genre, director, year } = req.body;
 
-  return res.status(200).json(movies);
-};
-
-export const create = (req: Request, res: Response) => {
-  const { name, genre, year } = req.body;
-
-  if (!name || !genre || !year) {
+  if (!name || !year) {
     return res.status(400).json({
-      message: "Todos os campos (name, genre, year) são obrigatórios.",
+      message: "The name and year are required.",
     });
   }
 
-  const newMovie = movieService.create(name, genre, year);
-
-  return res.status(201).json(newMovie);
+  try {
+    const newMovie = await movieService.create(name, genre, director, year);
+    return res.status(201).json(newMovie);
+  } catch (err) {
+    return res.status(500).json({ message: (err as Error).message });
+  }
 };
 
-export const findById = (req: Request, res: Response) => {
+export const findAll = async (req: Request, res: Response) => {
+  try {
+    const movies = await movieService.findAll();
+    return res.status(200).json(movies);
+  } catch (err) {
+    return res.status(500).json({ message: (err as Error).message });
+  }
+};
+
+export const findById = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  if (!id) {
+    return res.status(400).json({ message: 'Param "id" is required.' });
+  }
+
+  const idNum = Number(id);
+  if (!Number.isInteger(idNum)) {
+    return res.status(400).json({ message: 'Param "id" must be an integer.' });
+  }
+
+  try {
+    const movie = await movieService.findById(idNum);
+    if (!movie) {
+      return res
+        .status(404)
+        .json({ message: `Movie with id ${idNum} not found.` });
+    }
+    return res.status(200).json(movie);
+  } catch (err) {
+    return res.status(500).json({ message: (err as Error).message });
+  }
+};
+
+export const update = async (req: Request, res: Response) => {
   const id = req.params.id;
   if (!id) {
     return res.status(400).json({ message: 'Param "id" is required.' });
   }
-  if (!isUuid(id))
-    return res.status(400).json({ message: "Invalid id format" });
-  const movie = movieService.findById(id);
-  if (!movie) {
-    return res.status(404).json({ message: `Movie with id ${id} not found.` });
-  }
-  return res.status(200).json(movie);
-};
+  const idNum = Number(id);
 
-export const update = (req: Request, res: Response) => {
-  const id = req.params.id;
-  if (!id) {
-    return res.status(400).json({ message: 'Param "id" is required.' });
-  }
-  if (!isUuid(id))
-    return res.status(400).json({ message: "Invalid id format" });
+  const { name, genre, director, year } = req.body;
 
-  const { name, genre, year } = req.body;
-
-  if (!name || !genre || !year) {
+  if (!name || !genre || !director || !year) {
     return res
       .status(400)
-      .json({ message: "Name, gender and year are required" });
+      .json({ message: "Name, genre, director and year are required" });
   }
-
-  const updated = movieService.update(id, { name, genre, year });
-  if (!update) return res.status(404).json({ message: "Not found" });
-  return res.status(200).json(updated);
+  try {
+    const updated = await movieService.update(idNum, {
+      name,
+      genre,
+      director,
+      year,
+    });
+    if (!updated)
+      return res
+        .status(404)
+        .json({ message: `Movie with id ${idNum} not found.` });
+    return res.status(200).json(updated);
+  } catch (err) {
+    return res.status(500).json({ message: (err as Error).message });
+  }
 };
 
-export const patch = (req: Request, res: Response) => {
+export const patch = async (req: Request, res: Response) => {
   const id = req.params.id;
   if (!id) {
     return res.status(400).json({ message: 'Param "id" is required.' });
   }
-  if (!isUuid(id))
-    return res.status(400).json({ message: "Invalid id format" });
+  const idNum = Number(id);
 
-  const dto: Partial<{ name: string; genre: string; year: string }> = {};
+  const dto: Partial<{
+    name: string;
+    genre: string;
+    director: string;
+    year: number;
+  }> = {};
   if ("name" in req.body) dto.name = req.body.name;
   if ("genre" in req.body) dto.genre = req.body.genre;
+  if ("director" in req.body) dto.director = req.body.director;
   if ("year" in req.body) dto.year = req.body.year;
 
-  const patched = movieService.patch(id, dto);
-  if (!patched) return res.status(404).json({ message: "Not found." });
-
-  return res.status(200).json(patched);
+  try {
+    const patched = await movieService.patch(idNum, dto);
+    if (!patched) {
+      return res
+        .status(404)
+        .json({ message: `Movie with id ${idNum} not found.` });
+    }
+    return res.status(200).json(patched);
+  } catch (err) {
+    return res.status(500).json({ message: (err as Error).message });
+  }
 };
 
-export const deleteMovie = (req: Request, res: Response) => {
+export const deleteMovie = async (req: Request, res: Response) => {
   const id = req.params.id;
+  const idNum = Number(id);
   if (!id) {
     return res.status(400).json({ message: 'Param "id" is required.' });
   }
-  if (!isUuid(id))
-    return res.status(400).json({ message: "Invalid id format" });
 
-  const deleted = movieService.deleteMovie(id);
-  if (!deleted) return res.status(404).json({ message: "Not found." });
+  try {
+    const deleted = await movieService.deleteMovie(idNum);
+    if (!deleted)
+      return res
+        .status(404)
+        .json({ message: `Movie with id ${idNum} not found.` });
 
-  return res.status(200).json(deleted);
+    return res.status(200).json(deleted);
+  } catch (err) {
+    return res.status(500).json({ message: (err as Error).message });
+  }
 };
 
-export const deleteAllMovies = (req: Request, res: Response) => {
-  movieService.deleteAllMovies();
-
-  const removed = movieService.deleteAllMovies();
-  return res.status(200).json(removed);
+export const deleteAllMovies = async (_req: Request, res: Response) => {
+  try {
+    const result = await movieService.deleteAllMovies();
+    return res.status(200).json({ deleted: result.count });
+  } catch (err) {
+    return res.status(500).json({ message: (err as Error).message });
+  }
 };
