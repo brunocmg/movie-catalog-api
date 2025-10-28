@@ -54,3 +54,9 @@ pids
 
 # Diagnostic reports (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+
+# Legacy Prisma client output (legacy custom path)
+/generated/prisma
+
+# Ignore any previously generated Prisma client under src/
+/src/generated/
