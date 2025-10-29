@@ -60,7 +60,19 @@ export class MoviesService {
     return task
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} movie`;
+  async remove(id: number) {
+    try {
+      const findTask = await this.prisma.movie.findFirst({ where: { id: id } });
+
+      if (!findTask) throw new HttpException('This task does not exist', HttpStatus.NOT_FOUND);
+
+      await this.prisma.movie.delete({where: {id: findTask.id}})
+
+      return {message: 'Task deleted'}
+
+    } catch (err) {
+      console.log(err);
+      throw new HttpException('Failed to delete task.', HttpStatus.BAD_REQUEST);
+    }
   }
 }
