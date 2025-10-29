@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { CreateMovieDto } from './dto/create-movie.dto';
 import { UpdateMovieDto } from './dto/update-movie.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -6,8 +6,22 @@ import { PrismaService } from 'src/prisma/prisma.service';
 @Injectable()
 export class MoviesService {
   constructor(private prisma: PrismaService) {}
-  create(createMovieDto: CreateMovieDto) {
-    return 'This action adds a new movie';
+  async create(createMovieDto: CreateMovieDto) {
+    try{
+      const newMovie = await this.prisma.movie.create({
+        data: {
+          name: createMovieDto.name,
+          genre: createMovieDto.genre,
+          director: createMovieDto.director,
+          year: createMovieDto.year
+        }
+      })
+      return newMovie
+    
+    }catch(err){
+      console.log(err)
+      throw new HttpException("Falha ao cadastrar tarefa", HttpStatus.BAD_REQUEST)
+    }
   }
 
   findAll() {
