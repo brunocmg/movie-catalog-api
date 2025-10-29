@@ -34,8 +34,11 @@ export class MoviesService {
     }
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} movie`;
+  async findOne(id: number) {
+      const task = await this.prisma.movie.findFirst({ where: {id: id}})
+      if (task?.name) return task
+
+      throw new HttpException('Failed to find task.', HttpStatus.BAD_REQUEST);
   }
 
   update(id: number, updateMovieDto: UpdateMovieDto) {
