@@ -24,8 +24,14 @@ export class MoviesService {
     }
   }
 
-  findAll() {
-    return `This action returns all movies`;
+  async findAll() {
+    try {
+      const allTasks = await this.prisma.movie.findMany()
+      return allTasks
+    }catch(err){
+      console.log(err)
+      throw new HttpException('Failed to find tasks.', HttpStatus.BAD_REQUEST);
+    }
   }
 
   findOne(id: number) {
