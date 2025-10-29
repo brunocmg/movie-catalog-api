@@ -20,7 +20,7 @@ export class MoviesService {
     
     }catch(err){
       console.log(err)
-      throw new HttpException("Falha ao cadastrar tarefa", HttpStatus.BAD_REQUEST)
+      throw new HttpException("Task registration failed.", HttpStatus.BAD_REQUEST)
     }
   }
 
