@@ -12,27 +12,27 @@ import { PrismaService } from 'src/prisma/prisma.service';
 export class MoviesService {
   constructor(private prisma: PrismaService) {}
   async create(createMovieDto: CreateMovieDto) {
-    try{
+    try {
       const newMovie = await this.prisma.movie.create({
         data: {
           name: createMovieDto.name,
           genre: createMovieDto.genre,
           director: createMovieDto.director,
-          year: createMovieDto.year
-        }
-      })
-      return newMovie
-    
+          year: createMovieDto.year,
+        },
+      });
+      return newMovie;
     } catch (err) {
       console.error(err);
+      if ((err as any)?.name === 'PrismaClientKnownRequestError') throw err;
       throw new InternalServerErrorException('Movie registration failed.');
     }
   }
 
   async findAll() {
     try {
-      const allMovies = await this.prisma.movie.findMany({ orderBy: { id: 'asc' } })
-      return allMovies
+      const allMovies = await this.prisma.movie.findMany({ orderBy: { id: 'asc' } });
+      return allMovies;
     } catch (err) {
       console.error(err);
       throw new InternalServerErrorException('Failed to find movies.');
@@ -77,6 +77,7 @@ export class MoviesService {
       return deleted;
     } catch (err) {
       console.error(err);
+      if ((err as any)?.name === 'PrismaClientKnownRequestError') throw err;
       throw new InternalServerErrorException('Failed to delete movie.');
     }
   }
