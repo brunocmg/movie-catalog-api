@@ -1,4 +1,9 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  InternalServerErrorException,
+  BadRequestException,
+} from '@nestjs/common';
 import { CreateMovieDto } from './dto/create-movie.dto';
 import { UpdateMovieDto } from './dto/update-movie.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -18,9 +23,9 @@ export class MoviesService {
       })
       return newMovie
     
-    }catch(err){
-      console.log(err)
-      throw new HttpException("Movie registration failed.", HttpStatus.BAD_REQUEST)
+    } catch (err) {
+      console.error(err);
+      throw new InternalServerErrorException('Movie registration failed.');
     }
   }
 
@@ -28,51 +33,51 @@ export class MoviesService {
     try {
       const allMovies = await this.prisma.movie.findMany({ orderBy: { id: 'asc' } })
       return allMovies
-    }catch(err){
-      console.log(err)
-      throw new HttpException('Failed to find movies.', HttpStatus.BAD_REQUEST);
+    } catch (err) {
+      console.error(err);
+      throw new InternalServerErrorException('Failed to find movies.');
     }
   }
 
   async findOne(id: number) {
-      const movie = await this.prisma.movie.findFirst({ where: {id: id}})
-      if (movie?.name) return movie
+    const movie = await this.prisma.movie.findFirst({ where: { id } });
+    if (movie) return movie;
 
-      throw new HttpException('Failed to find movie.', HttpStatus.BAD_REQUEST);
+    throw new NotFoundException('Movie not found.');
   }
 
   async update(id: number, updateMovieDto: UpdateMovieDto) {
-    const findMovie = await this.prisma.movie.findFirst({ where: { id: id } });
+    const findMovie = await this.prisma.movie.findFirst({ where: { id } });
 
     if (!findMovie) {
-      throw new HttpException('This movie does not exist', HttpStatus.NOT_FOUND);
+      throw new NotFoundException('Movie not found.');
     }
 
     const movie = await this.prisma.movie.update({
-      where: {id: findMovie.id},
+      where: { id: findMovie.id },
       data: {
-        name: updateMovieDto.name ? updateMovieDto.name : findMovie.name,
-        genre: updateMovieDto.genre ? updateMovieDto.genre : findMovie.genre,
-        director: updateMovieDto.director ? updateMovieDto.director : findMovie.director,
-        year: updateMovieDto.year ? updateMovieDto.year : findMovie.year
-      }
-    })
-    return movie
+        name: updateMovieDto.name ?? findMovie.name,
+        genre: updateMovieDto.genre ?? findMovie.genre,
+        director: updateMovieDto.director ?? findMovie.director,
+        year: updateMovieDto.year ?? findMovie.year,
+      },
+    });
+
+    return movie;
   }
 
   async remove(id: number) {
     try {
-      const findMovie = await this.prisma.movie.findFirst({ where: { id: id } });
+      const findMovie = await this.prisma.movie.findFirst({ where: { id } });
 
-      if (!findMovie) throw new HttpException('This movie does not exist', HttpStatus.NOT_FOUND);
+      if (!findMovie) throw new NotFoundException('Movie not found.');
 
-      await this.prisma.movie.delete({where: {id: findMovie.id}})
+      const deleted = await this.prisma.movie.delete({ where: { id: findMovie.id } });
 
-      return {message: 'Movie deleted'}
-
+      return deleted;
     } catch (err) {
-      console.log(err);
-      throw new HttpException('Failed to delete movie.', HttpStatus.BAD_REQUEST);
+      console.error(err);
+      throw new InternalServerErrorException('Failed to delete movie.');
     }
   }
 }
