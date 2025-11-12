@@ -20,59 +20,59 @@ export class MoviesService {
     
     }catch(err){
       console.log(err)
-      throw new HttpException("Task registration failed.", HttpStatus.BAD_REQUEST)
+      throw new HttpException("Movie registration failed.", HttpStatus.BAD_REQUEST)
     }
   }
 
   async findAll() {
     try {
-      const allTasks = await this.prisma.movie.findMany()
-      return allTasks
+      const allMovies = await this.prisma.movie.findMany({ orderBy: { id: 'asc' } })
+      return allMovies
     }catch(err){
       console.log(err)
-      throw new HttpException('Failed to find tasks.', HttpStatus.BAD_REQUEST);
+      throw new HttpException('Failed to find movies.', HttpStatus.BAD_REQUEST);
     }
   }
 
   async findOne(id: number) {
-      const task = await this.prisma.movie.findFirst({ where: {id: id}})
-      if (task?.name) return task
+      const movie = await this.prisma.movie.findFirst({ where: {id: id}})
+      if (movie?.name) return movie
 
-      throw new HttpException('Failed to find task.', HttpStatus.BAD_REQUEST);
+      throw new HttpException('Failed to find movie.', HttpStatus.BAD_REQUEST);
   }
 
   async update(id: number, updateMovieDto: UpdateMovieDto) {
-    const findTask = await this.prisma.movie.findFirst({ where: { id: id } });
+    const findMovie = await this.prisma.movie.findFirst({ where: { id: id } });
 
-    if (!findTask) {
-      throw new HttpException('This task does not exist', HttpStatus.NOT_FOUND);
+    if (!findMovie) {
+      throw new HttpException('This movie does not exist', HttpStatus.NOT_FOUND);
     }
 
-    const task = await this.prisma.movie.update({
-      where: {id: findTask.id},
+    const movie = await this.prisma.movie.update({
+      where: {id: findMovie.id},
       data: {
-        name: updateMovieDto.name ? updateMovieDto.name : findTask.name,
-        genre: updateMovieDto.genre ? updateMovieDto.genre : findTask.genre,
-        director: updateMovieDto.director ? updateMovieDto.director : findTask.director,
-        year: updateMovieDto.year ? updateMovieDto.year : findTask.year
+        name: updateMovieDto.name ? updateMovieDto.name : findMovie.name,
+        genre: updateMovieDto.genre ? updateMovieDto.genre : findMovie.genre,
+        director: updateMovieDto.director ? updateMovieDto.director : findMovie.director,
+        year: updateMovieDto.year ? updateMovieDto.year : findMovie.year
       }
     })
-    return task
+    return movie
   }
 
   async remove(id: number) {
     try {
-      const findTask = await this.prisma.movie.findFirst({ where: { id: id } });
+      const findMovie = await this.prisma.movie.findFirst({ where: { id: id } });
 
-      if (!findTask) throw new HttpException('This task does not exist', HttpStatus.NOT_FOUND);
+      if (!findMovie) throw new HttpException('This movie does not exist', HttpStatus.NOT_FOUND);
 
-      await this.prisma.movie.delete({where: {id: findTask.id}})
+      await this.prisma.movie.delete({where: {id: findMovie.id}})
 
-      return {message: 'Task deleted'}
+      return {message: 'Movie deleted'}
 
     } catch (err) {
       console.log(err);
-      throw new HttpException('Failed to delete task.', HttpStatus.BAD_REQUEST);
+      throw new HttpException('Failed to delete movie.', HttpStatus.BAD_REQUEST);
     }
   }
 }
