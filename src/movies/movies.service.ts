@@ -26,7 +26,7 @@ export class MoviesService {
 
   async findAll() {
     try {
-      const allMovies = await this.prisma.movie.findMany()
+      const allMovies = await this.prisma.movie.findMany({ orderBy: { id: 'asc' } })
       return allMovies
     }catch(err){
       console.log(err)
