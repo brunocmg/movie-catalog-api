@@ -9,7 +9,7 @@ import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
 import jwtConfig from '../config/jwt.config';
 import type { ConfigType } from '@nestjs/config';
-import { REQUEST_TOKEN_PAYLOAD_NAME } from '../common/auth.constants';
+import { REQUEST_TOKEN_PAYLOAD_NAME } from '../common/auth.constant';
 import { PrismaService } from 'src/prisma/prisma.service';
 
 @Injectable()
@@ -42,9 +42,6 @@ export class AuthTokenGuard implements CanActivate {
         where: { id: payload?.sub },
       });
 
-      if (!userStatus?.active) {
-        throw new UnauthorizedException('Acesso não autorizado.');
-      }
     } catch (err) {
       console.log(err);
       throw new UnauthorizedException('Acesso não autorizado');
