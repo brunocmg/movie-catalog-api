@@ -42,6 +42,10 @@ export class AuthTokenGuard implements CanActivate {
         where: { id: payload?.sub },
       });
 
+      if (!userStatus?.active) {
+        throw new UnauthorizedException('Acesso não autorizado.');
+      }
+
     } catch (err) {
       console.log(err);
       throw new UnauthorizedException('Acesso não autorizado');
