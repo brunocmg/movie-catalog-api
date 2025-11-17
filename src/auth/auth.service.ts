@@ -23,6 +23,7 @@ export class AuthService {
     const user = await this.prisma.user.findFirst({
       where: {
         email: signInDto.email,
+        active: true
       },
     });
 
@@ -53,6 +54,8 @@ export class AuthService {
       {
         secret: this.jwtConfiguration.secret,
         expiresIn: this.jwtConfiguration.jwtTtl,
+        audience: this.jwtConfiguration.audience,
+        issuer: this.jwtConfiguration.issuer,
       } as any,
     );
 
