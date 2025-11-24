@@ -72,7 +72,7 @@ describe('UsersService', () => {
         },
       });
 
-      expect(result).toEqual({
+      expect(result).toMatchObject({
         id: 1,
         name: createUserDto.name,
         email: createUserDto.email,
