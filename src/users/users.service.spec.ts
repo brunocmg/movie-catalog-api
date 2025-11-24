@@ -135,5 +135,22 @@ describe('UsersService', () => {
 
       expect(result).toEqual(mockUser)
     })
+
+    it('should throw exception when user is not found', async () => {
+      jest.spyOn(prismaService.user, 'findFirst').mockResolvedValue(null)
+
+      await expect(userService.findOne(1)).rejects.toThrow(
+        new HttpException('Usuário não encontrado!', HttpStatus.BAD_REQUEST)
+      );
+
+      expect(prismaService.user.findFirst).toHaveBeenCalledWith({
+        where: { id: 1 },
+        select: {
+          id: true,
+          name: true,
+          email: true
+        }
+      })
+    })
   })
 })
