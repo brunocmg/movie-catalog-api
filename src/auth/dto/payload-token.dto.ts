@@ -3,6 +3,6 @@ export class PayloadTokenDto {
   email: string;
   iat: number;
   exp: number;
-  aud: number;
+  aud: string;
   iss: string;
 }
