@@ -3,6 +3,7 @@ import { UsersService } from "./users.service"
 import { Test, TestingModule } from "@nestjs/testing"
 import { PrismaService } from "src/prisma/prisma.service"
 import { CreateUserDto } from "./dto/create-user.dto"
+import { HttpException, HttpStatus } from "@nestjs/common"
 
 describe('UsersService', () => {
   let userService: UsersService
@@ -72,6 +73,36 @@ describe('UsersService', () => {
         id: 1,
         name: createUserDto.name,
         email: createUserDto.email
+      })
+    })
+
+    it ('should throw error if prisma create fails', async () => {
+      const createUserDto: CreateUserDto = {
+        email: 'bruno@teste.com',
+        name: 'Bruno',
+        password: '123123'
+      }
+
+      jest.spyOn(hashingService, 'hash').mockResolvedValue('HASH_MOCK_EXAMPLE')
+      jest.spyOn(prismaService.user, 'create').mockRejectedValue(new Error('Database error'))
+
+      await expect(userService.create(createUserDto)).rejects.toThrow(
+        new HttpException('Falha ao cadastrar usuário!', HttpStatus.BAD_REQUEST)
+      )
+
+      expect(hashingService.hash).toHaveBeenCalledWith(createUserDto.password)
+
+      expect(prismaService.user.create).toHaveBeenCalledWith({
+        data: {
+          name: createUserDto.name,
+          email: createUserDto.email,
+          passwordHash: 'HASH_MOCK_EXAMPLE'
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true
+        }
       })
     })
   })
