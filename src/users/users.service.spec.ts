@@ -43,7 +43,7 @@ describe('UsersService', () => {
     hashingService = module.get<HashingServiceProtocol>(HashingServiceProtocol)
   })
 
-  describe ('Create User', () => {
+  describe('Create User', () => {
     it ('should create a new user', async () => {
       const createUserDto: CreateUserDto = {
         email: 'bruno@teste.com',
@@ -104,6 +104,36 @@ describe('UsersService', () => {
           email: true
         }
       })
+    })
+  })
+
+  describe('Find One User', () => {
+    it('should return a user when found', async () => {
+      const mockUser = {
+        id: 1,
+        name: 'Bruno',
+        email: 'bruno@teste.com',
+        passwordHash: 'hash_exemplo',
+        active: true,
+        createAt: new Date()
+      }
+
+      jest.spyOn(prismaService.user, 'findFirst').mockResolvedValue(mockUser)
+
+      const result = await userService.findOne(1)
+
+      expect(prismaService.user.findFirst).toHaveBeenCalledWith({
+        where: {
+          id: 1
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+        }
+      })
+
+      expect(result).toEqual(mockUser)
     })
   })
 })
