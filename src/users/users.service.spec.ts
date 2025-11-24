@@ -4,6 +4,8 @@ import { Test, TestingModule } from "@nestjs/testing"
 import { PrismaService } from "src/prisma/prisma.service"
 import { CreateUserDto } from "./dto/create-user.dto"
 import { HttpException, HttpStatus } from "@nestjs/common"
+import { UpdateUserDto } from "./dto/update-user.dto"
+import { PayloadTokenDto } from "src/auth/dto/payload-token.dto"
 
 describe('UsersService', () => {
   let userService: UsersService
@@ -154,5 +156,25 @@ describe('UsersService', () => {
     })
   })
 
-  
+  describe('Update User', () => {
+    it('should throw exception when user is not found', async () => {
+      const updateUserDto: UpdateUserDto = { name: 'Novo nome' };
+      const tokenPayload: PayloadTokenDto = {
+        sub: 1,
+        aud: '',
+        email: 'matheus@teste.com',
+        exp: 123,
+        iat: 123,
+        iss: '',
+      };
+
+      jest.spyOn(prismaService.user, 'findFirst').mockResolvedValue(null);
+
+      await expect(
+        userService.update(1, updateUserDto, tokenPayload),
+      ).rejects.toThrow(
+        new HttpException('Falha ao atualizar usuário!',HttpStatus.BAD_REQUEST),
+      );
+    });
+  })
 })
