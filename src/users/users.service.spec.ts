@@ -276,4 +276,23 @@ describe('UsersService', () => {
       expect(result).toEqual(updatedUser);
     });
   });
+
+  describe('Delete User', () => {
+    it('should throw error when user is not found', async () => {
+      const tokenPayload: PayloadTokenDto = {
+        sub: 1,
+        aud: '',
+        email: 'matheus@teste.com',
+        exp: 123,
+        iat: 123,
+        iss: '',
+      };
+
+      jest.spyOn(prismaService.user, 'findFirst').mockResolvedValue(null);
+
+      await expect(userService.delete(1, tokenPayload)).rejects.toThrow(
+        new HttpException('Falha ao deletar usuário!', HttpStatus.BAD_REQUEST),
+      );
+    });
+  })
 });
