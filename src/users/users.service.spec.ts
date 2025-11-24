@@ -294,5 +294,33 @@ describe('UsersService', () => {
         new HttpException('Falha ao deletar usuário!', HttpStatus.BAD_REQUEST),
       );
     });
+
+    it('should throw UNAUTHORIZED when user is not authorized', async () => {
+      const tokenPayload: PayloadTokenDto = {
+        sub: 5,
+        aud: '',
+        email: 'matheus@teste.com',
+        exp: 123,
+        iat: 123,
+        iss: '',
+      };
+
+      const mockUser = {
+        id: 1,
+        name: 'Matheus',
+        email: 'matheus@teste.com',
+        passwordHash: 'hash_exemplo',
+        active: true,
+        createAt: new Date(),
+      };
+
+      jest.spyOn(prismaService.user, 'findFirst').mockResolvedValue(mockUser);
+
+      await expect(userService.delete(1, tokenPayload)).rejects.toThrow(
+        new HttpException('Falha ao deletar usuário!', HttpStatus.BAD_REQUEST),
+      );
+
+      expect(prismaService.user.delete).not.toHaveBeenCalled();
+    });
   })
 });
