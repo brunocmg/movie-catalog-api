@@ -13,4 +13,12 @@ describe('Users Controller', () => {
   beforeEach(() => {
     controller = new UsersController(usersServiceMock as any)
   })
+
+  it('should create a new user', async () => {
+    const userId = 1
+
+    await controller.findOneUser(userId)
+
+    expect(usersServiceMock.findOne).toHaveBeenCalledWith(userId)
+  })
 })
