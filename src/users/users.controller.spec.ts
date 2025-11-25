@@ -1,4 +1,6 @@
+import { PayloadTokenDto } from "src/auth/dto/payload-token.dto"
 import { CreateUserDto } from "./dto/create-user.dto"
+import { UpdateUserDto } from "./dto/update-user.dto"
 import { UsersController } from "./users.controller"
 
 describe('Users Controller', () => {
@@ -44,4 +46,42 @@ describe('Users Controller', () => {
 
     expect(result).toEqual(mockUser);
   })
+
+  it('should update user', async () => {
+    const userId = 1;
+    const updateUserDto: UpdateUserDto = {
+      name: 'Bruno Novo',
+    };
+
+    const tokenPayload: PayloadTokenDto = {
+      sub: userId,
+      aud: '',
+      email: '',
+      exp: 1,
+      iat: 1,
+      iss: '',
+    };
+
+    const updatedUser = {
+      id: userId,
+      name: 'Bruno Novo',
+      email: 'teste@teste.com',
+    };
+
+    (usersServiceMock.update as jest.Mock).mockResolvedValue(updatedUser);
+
+    const result = await controller.updateUser(
+      userId,
+      updateUserDto,
+      tokenPayload,
+    );
+
+    expect(usersServiceMock.update).toHaveBeenCalledWith(
+      userId,
+      updateUserDto,
+      tokenPayload,
+    );
+
+    expect(result).toEqual(updatedUser);
+  });
 })
