@@ -14,7 +14,7 @@ describe('Users Controller', () => {
     controller = new UsersController(usersServiceMock as any)
   })
 
-  it('should create a new user', async () => {
+  it('should find One user', async () => {
     const userId = 1
 
     await controller.findOneUser(userId)
