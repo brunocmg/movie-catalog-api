@@ -84,4 +84,20 @@ describe('Users Controller', () => {
 
     expect(result).toEqual(updatedUser);
   });
+
+  it('should delete a user', async () => {
+    const userId = 1;
+    const tokenPayload: PayloadTokenDto = {
+      sub: userId,
+      aud: '',
+      email: '',
+      exp: 1,
+      iat: 1,
+      iss: '',
+    };
+
+    await controller.deleteUser(userId, tokenPayload);
+
+    expect(usersServiceMock.delete).toHaveBeenCalledWith(userId, tokenPayload);
+  });
 })
