@@ -1,3 +1,4 @@
+import { CreateUserDto } from "./dto/create-user.dto"
 import { UsersController } from "./users.controller"
 
 describe('Users Controller', () => {
@@ -20,5 +21,27 @@ describe('Users Controller', () => {
     await controller.findOneUser(userId)
 
     expect(usersServiceMock.findOne).toHaveBeenCalledWith(userId)
+  })
+
+  it('should create a new user', async () => {
+    const createUserDto: CreateUserDto = {
+      name: 'Bruno',
+      email: 'teste@teste.com',
+      password: '123123',
+    };
+
+    const mockUser = {
+      id: 1,
+      name: 'Bruno',
+      email: 'teste@teste.com',
+    };
+
+    usersServiceMock.create.mockResolvedValue(mockUser);
+
+    const result = await controller.createUser(createUserDto);
+
+    expect(usersServiceMock.create).toHaveBeenCalledWith(createUserDto);
+
+    expect(result).toEqual(mockUser);
   })
 })
