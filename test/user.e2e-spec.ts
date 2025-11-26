@@ -46,5 +46,13 @@ describe('Users (e2e)', () => {
     await app.init();
   });
 
+  afterEach(async () => {
+    await prismaService.user.deleteMany()
+  })
+
+  afterEach(async () => {
+    await app.close()
+  })
+
   it('/ (GET)', () => { });
 });
