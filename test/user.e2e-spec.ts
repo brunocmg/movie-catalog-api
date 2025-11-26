@@ -54,5 +54,7 @@ describe('Users (e2e)', () => {
     await app.close()
   })
 
-  it('/ (GET)', () => { });
+  describe('/users', () => {
+    
+  })
 });
