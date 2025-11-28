@@ -7,11 +7,12 @@ import {
 import { CreateMovieDto } from './dto/create-movie.dto';
 import { UpdateMovieDto } from './dto/update-movie.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { ResponseMovieDto } from './dto/response-movie.dto';
 
 @Injectable()
 export class MoviesService {
   constructor(private prisma: PrismaService) {}
-  async create(createMovieDto: CreateMovieDto) {
+  async create(createMovieDto: CreateMovieDto): Promise<ResponseMovieDto> {
     try {
       const newMovie = await this.prisma.movie.create({
         data: {
@@ -29,9 +30,11 @@ export class MoviesService {
     }
   }
 
-  async findAll() {
+  async findAll(): Promise<ResponseMovieDto[]> {
     try {
-      const allMovies = await this.prisma.movie.findMany({ orderBy: { id: 'asc' } });
+      const allMovies = await this.prisma.movie.findMany({
+        orderBy: { id: 'asc' },
+      });
       return allMovies;
     } catch (err) {
       console.error(err);
@@ -39,14 +42,17 @@ export class MoviesService {
     }
   }
 
-  async findOne(id: number) {
+  async findOne(id: number): Promise<ResponseMovieDto> {
     const movie = await this.prisma.movie.findFirst({ where: { id } });
     if (movie) return movie;
 
     throw new NotFoundException('Movie not found.');
   }
 
-  async update(id: number, updateMovieDto: UpdateMovieDto) {
+  async update(
+    id: number,
+    updateMovieDto: UpdateMovieDto,
+  ): Promise<ResponseMovieDto> {
     const findMovie = await this.prisma.movie.findFirst({ where: { id } });
 
     if (!findMovie) {
@@ -72,7 +78,9 @@ export class MoviesService {
 
       if (!findMovie) throw new NotFoundException('Movie not found.');
 
-      const deleted = await this.prisma.movie.delete({ where: { id: findMovie.id } });
+      const deleted = await this.prisma.movie.delete({
+        where: { id: findMovie.id },
+      });
 
       return deleted;
     } catch (err) {
