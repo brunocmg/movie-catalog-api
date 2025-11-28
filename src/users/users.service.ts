@@ -4,6 +4,7 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { HashingServiceProtocol } from 'src/auth/hash/hashing.service';
 import { PayloadTokenDto } from 'src/auth/dto/payload-token.dto';
+import { ResponseFindOneUser } from './dto/response-user.dto';
 
 @Injectable()
 export class UsersService {
@@ -12,7 +13,7 @@ export class UsersService {
     private readonly hashingService: HashingServiceProtocol,
   ) {}
 
-  async findOne(id: number) {
+  async findOne(id: number): Promise<ResponseFindOneUser> {
     const user = await this.prisma.user.findFirst({
       where: {
         id: id,
@@ -29,7 +30,7 @@ export class UsersService {
     throw new HttpException('Usuário não encontrado!', HttpStatus.BAD_REQUEST);
   }
 
-  async create(CreateUserDto: CreateUserDto) {
+  async create(CreateUserDto: CreateUserDto): Promise<ResponseFindOneUser> {
     try {
       const passwordHash = await this.hashingService.hash(
         CreateUserDto.password,
@@ -51,7 +52,10 @@ export class UsersService {
       return user;
     } catch (err) {
       console.log(err);
-      throw new HttpException('Falha ao cadastrar usuário!',HttpStatus.BAD_REQUEST,);
+      throw new HttpException(
+        'Falha ao cadastrar usuário!',
+        HttpStatus.BAD_REQUEST,
+      );
     }
   }
 
@@ -59,7 +63,7 @@ export class UsersService {
     id: number,
     updateUserDto: UpdateUserDto,
     tokenPayload: PayloadTokenDto,
-  ) {
+  ): Promise<ResponseFindOneUser> {
     console.log(tokenPayload);
     try {
       const user = await this.prisma.user.findFirst({
@@ -93,7 +97,9 @@ export class UsersService {
         },
         data: {
           name: dataUser.name,
-          passwordHash: dataUser?.passwordHash? dataUser?.passwordHash : user.passwordHash,
+          passwordHash: dataUser?.passwordHash
+            ? dataUser?.passwordHash
+            : user.passwordHash,
         },
         select: {
           id: true,
