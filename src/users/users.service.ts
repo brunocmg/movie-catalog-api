@@ -4,7 +4,7 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { HashingServiceProtocol } from 'src/auth/hash/hashing.service';
 import { PayloadTokenDto } from 'src/auth/dto/payload-token.dto';
-import { ResponseFindOneUser } from './dto/response-user.dto';
+import { ResponseUserDto } from './dto/response-user.dto';
 
 @Injectable()
 export class UsersService {
@@ -13,7 +13,7 @@ export class UsersService {
     private readonly hashingService: HashingServiceProtocol,
   ) {}
 
-  async findOne(id: number): Promise<ResponseFindOneUser> {
+  async findOne(id: number): Promise<ResponseUserDto> {
     const user = await this.prisma.user.findFirst({
       where: {
         id: id,
@@ -30,7 +30,7 @@ export class UsersService {
     throw new HttpException('Usuário não encontrado!', HttpStatus.BAD_REQUEST);
   }
 
-  async create(CreateUserDto: CreateUserDto): Promise<ResponseFindOneUser> {
+  async create(CreateUserDto: CreateUserDto): Promise<ResponseUserDto> {
     try {
       const passwordHash = await this.hashingService.hash(
         CreateUserDto.password,
@@ -63,7 +63,7 @@ export class UsersService {
     id: number,
     updateUserDto: UpdateUserDto,
     tokenPayload: PayloadTokenDto,
-  ): Promise<ResponseFindOneUser> {
+  ): Promise<ResponseUserDto> {
     console.log(tokenPayload);
     try {
       const user = await this.prisma.user.findFirst({
