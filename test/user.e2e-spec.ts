@@ -79,5 +79,19 @@ describe('Users (e2e)', () => {
         email: 'bruno@teste.com',
       });
     });
+
+    it('/users (POST) - weak password', async () => {
+      const createUserDto = {
+        name: 'Bruno Gomes',
+        email: 'bruno@teste.com',
+        password: '123',
+      };
+
+      await request(app.getHttpServer())
+        .post('/users')
+        .send(createUserDto)
+        .expect(400);
+    });
+
   });
 });
