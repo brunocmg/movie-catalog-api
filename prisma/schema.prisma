@@ -29,6 +29,7 @@ model User{
   email String @unique
   passwordHash String
   active Boolean @default(true)
+  avatar String?
 
   createAt DateTime? @default(now())
 
