@@ -6,6 +6,12 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { HttpException, HttpStatus } from '@nestjs/common';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { PayloadTokenDto } from 'src/auth/dto/payload-token.dto';
+import * as path from 'node:path';
+import * as fs from 'node:fs/promises';
+
+jest.mock('node:fs/promises', () => ({
+  writeFile: jest.fn(),
+}));
 
 describe('UsersService', () => {
   let userService: UsersService;
@@ -24,6 +30,7 @@ describe('UsersService', () => {
                 id: 1,
                 name: 'Bruno',
                 email: 'bruno@teste.com',
+                avatar: null,
                 createAt: new Date(),
               }),
               findFirst: jest.fn(),
@@ -123,6 +130,7 @@ describe('UsersService', () => {
         email: 'bruno@teste.com',
         passwordHash: 'hash_exemplo',
         active: true,
+        avatar: null,
         createAt: new Date(),
       };
 
@@ -203,6 +211,7 @@ describe('UsersService', () => {
         email: 'matheus@teste.com',
         passwordHash: 'hash_exemplo',
         active: true,
+        avatar: null,
         createAt: new Date(),
       };
 
@@ -238,6 +247,7 @@ describe('UsersService', () => {
         email: 'bruno@teste.com',
         passwordHash: 'hash_exemplo',
         active: true,
+        avatar: null,
         createAt: new Date(),
       };
 
@@ -247,6 +257,7 @@ describe('UsersService', () => {
         email: 'bruno@teste.com',
         passwordHash: 'novo_hash_exemplo',
         active: true,
+        avatar: null,
         createAt: new Date(),
       };
 
@@ -311,6 +322,7 @@ describe('UsersService', () => {
         email: 'matheus@teste.com',
         passwordHash: 'hash_exemplo',
         active: true,
+        avatar: null,
         createAt: new Date(),
       };
 
@@ -339,6 +351,7 @@ describe('UsersService', () => {
         email: 'matheus@teste.com',
         passwordHash: 'hash_exemplo',
         active: true,
+        avatar: null,
         createAt: new Date(),
       };
 
@@ -358,4 +371,130 @@ describe('UsersService', () => {
       });
     });
   })
+
+  describe('Upload Avatar User', () => {
+    it('should throw NOT_FOUND when user is not found', async () => {
+      const tokenPayload: PayloadTokenDto = {
+        sub: 1,
+        aud: '',
+        email: 'matheus@teste.com',
+        exp: 123,
+        iat: 123,
+        iss: '',
+      };
+
+      const file = {
+        originalname: 'avatar.png',
+        mimetype: 'image/png',
+        buffer: Buffer.from(''),
+      } as Express.Multer.File;
+
+      jest.spyOn(prismaService.user, 'findFirst').mockResolvedValue(null);
+
+      await expect(
+        userService.uploadAvatarImage(tokenPayload, file),
+      ).rejects.toThrow(
+        new HttpException(
+          'Falha ao atualizar o avatar do usuário!',
+          HttpStatus.BAD_REQUEST,
+        ),
+      );
+    });
+
+    it('should upload avatar and update user sucessfully', async () => {
+      const tokenPayload: PayloadTokenDto = {
+        sub: 1,
+        aud: '',
+        email: 'matheus@teste.com',
+        exp: 123,
+        iat: 123,
+        iss: '',
+      };
+
+      const file = {
+        originalname: 'avatar.png',
+        mimetype: 'image/png',
+        buffer: Buffer.from(''),
+      } as Express.Multer.File;
+
+      const mockUser: any = {
+        id: 1,
+        name: 'Bruno',
+        email: 'bruno@teste.com',
+        avatar: null,
+      };
+
+      const updatedUser: any = {
+        id: 1,
+        name: 'Bruno',
+        email: 'bruno@teste.com',
+        avatar: '1.png',
+      };
+
+      jest.spyOn(prismaService.user, 'findFirst').mockResolvedValue(mockUser);
+      jest.spyOn(prismaService.user, 'update').mockResolvedValue(updatedUser);
+      const fsMock = require('node:fs/promises');
+      (fsMock.writeFile as jest.Mock).mockResolvedValue(undefined);
+
+      const result = await userService.uploadAvatarImage(tokenPayload, file);
+
+      const fileLocale = path.resolve(process.cwd(), 'files', '1.png');
+
+      expect(fsMock.writeFile).toHaveBeenCalledWith(fileLocale, file.buffer);
+      expect(prismaService.user.update).toHaveBeenCalledWith({
+        where: {
+          id: mockUser.id,
+        },
+        data: {
+          avatar: '1.png',
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          avatar: true,
+        },
+      });
+
+      expect(result).toEqual(updatedUser);
+    });
+
+    it('should throw error if file write fails', async () => {
+      const tokenPayload: PayloadTokenDto = {
+        sub: 1,
+        aud: '',
+        email: 'bruno@teste.com',
+        exp: 123,
+        iat: 123,
+        iss: '',
+      };
+
+      const file = {
+        originalname: 'avatar.png',
+        mimetype: 'image/png',
+        buffer: Buffer.from(''),
+      } as Express.Multer.File;
+
+      const mockUser: any = {
+        id: 1,
+        name: 'Bruno',
+        email: 'bruno@teste.com',
+        avatar: null,
+      };
+
+      jest.spyOn(prismaService.user, 'findFirst').mockResolvedValue(mockUser);
+
+      const fsMock = require('node:fs/promises');
+      (fsMock.writeFile as jest.Mock).mockRejectedValue(new Error('Fail write error'));
+
+      await expect(
+        userService.uploadAvatarImage(tokenPayload, file),
+      ).rejects.toThrow(
+        new HttpException(
+          'Falha ao atualizar o avatar do usuário!',
+          HttpStatus.BAD_REQUEST,
+        ),
+      );
+    });
+  });
 });
