@@ -10,7 +10,8 @@ describe('Users Controller', () => {
     findOne: jest.fn(),
     create: jest.fn(),
     update: jest.fn(),
-    delete: jest.fn()
+    delete: jest.fn(),
+    uploadAvatarImage: jest.fn()
   }
 
   beforeEach(() => {
@@ -99,5 +100,29 @@ describe('Users Controller', () => {
     await controller.deleteUser(userId, tokenPayload);
 
     expect(usersServiceMock.delete).toHaveBeenCalledWith(userId, tokenPayload);
+  });
+
+  it('should upload avatar', async () => {
+    const tokenPayload: PayloadTokenDto = {
+      sub: 1,
+      aud: '',
+      email: '',
+      exp: 1,
+      iat: 1,
+      iss: '',
+    };
+
+    const mockFile = {
+      originalname: 'avatar.png',
+      mimetype: 'image/png',
+      buffer: Buffer.from('mock'),
+    } as Express.Multer.File;
+
+    await controller.uploadAvatar(tokenPayload, mockFile);
+
+    expect(usersServiceMock.uploadAvatarImage).toHaveBeenCalledWith(
+      tokenPayload,
+      mockFile,
+    );
   });
 })
