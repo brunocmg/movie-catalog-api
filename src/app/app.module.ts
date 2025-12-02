@@ -3,6 +3,8 @@ import { MoviesModule } from 'src/movies/movies.module';
 import { UsersModule } from 'src/users/users.module';
 import { AuthModule } from 'src/auth/auth.module';
 import { ConfigModule } from '@nestjs/config';
+import { ServeStaticModule } from '@nestjs/serve-static';
+import { join } from 'path';
 
 @Module({
   imports: [
@@ -14,6 +16,10 @@ import { ConfigModule } from '@nestjs/config';
     MoviesModule,
     UsersModule,
     AuthModule,
+    ServeStaticModule.forRoot({
+      rootPath: join(__dirname, '..', '..', 'files'),
+      serveRoot: "/files"
+    })
   ],
 })
 export class AppModule {}
