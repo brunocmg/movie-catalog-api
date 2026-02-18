@@ -87,55 +87,6 @@ The Swagger UI provides an interactive interface where you can:
 - Test endpoints directly from the browser
 - Understand authentication requirements
 
-### Example API Usage
-
-**Authentication Endpoints:**
-```bash
-# Sign up
-curl -X POST http://localhost:3000/auth/signup \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "user@example.com",
-    "password": "securepassword"
-  }'
-
-# Sign in
-curl -X POST http://localhost:3000/auth/signin \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "user@example.com",
-    "password": "securepassword"
-  }'
-```
-
-**Movie Endpoints:**
-```bash
-# Get all movies
-curl -X GET http://localhost:3000/movies
-
-# Create a movie (requires admin)
-curl -X POST http://localhost:3000/movies \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "title": "Inception",
-    "description": "A mind-bending thriller",
-    "releaseYear": 2010
-  }'
-
-# Update a movie
-curl -X PATCH http://localhost:3000/movies/1 \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "title": "Inception Updated"
-  }'
-
-# Delete a movie
-curl -X DELETE http://localhost:3000/movies/1 \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN"
-```
-
 ## 🧪 Testing
 
 ```bash
@@ -192,8 +143,12 @@ src/
 
 ## 👨‍💻 Author
 
+<<<<<<< HEAD
 **Bruno** - [GitHub](https://github.com)
 
 ## 📄 License
 
 This project is proprietary and belongs to Bruno. All rights reserved.
+=======
+**Bruno Gomes** - [GitHub](https://github.com)
+>>>>>>> 23a0028e11e013e8e8bc1250fbf86b0a0c18dd8d
