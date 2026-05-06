@@ -2,12 +2,15 @@ import {
   Injectable,
   NotFoundException,
   InternalServerErrorException,
-  BadRequestException,
 } from '@nestjs/common';
 import { CreateMovieDto } from './dto/create-movie.dto';
 import { UpdateMovieDto } from './dto/update-movie.dto';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { PrismaService } from '../prisma/prisma.service';
 import { ResponseMovieDto } from './dto/response-movie.dto';
+
+type PrismaKnownRequestError = {
+  name: 'PrismaClientKnownRequestError';
+};
 
 @Injectable()
 export class MoviesService {
@@ -25,7 +28,7 @@ export class MoviesService {
       return newMovie;
     } catch (err) {
       console.error(err);
-      if ((err as any)?.name === 'PrismaClientKnownRequestError') throw err;
+      if (this.isPrismaKnownRequestError(err)) throw err;
       throw new InternalServerErrorException('Movie registration failed.');
     }
   }
@@ -85,8 +88,20 @@ export class MoviesService {
       return deleted;
     } catch (err) {
       console.error(err);
-      if ((err as any)?.name === 'PrismaClientKnownRequestError') throw err;
+      if (this.isPrismaKnownRequestError(err)) throw err;
       throw new InternalServerErrorException('Failed to delete movie.');
     }
+  }
+
+  private isPrismaKnownRequestError(
+    error: unknown,
+  ): error is PrismaKnownRequestError {
+    return (
+      typeof error === 'object' &&
+      error !== null &&
+      'name' in error &&
+      (error as PrismaKnownRequestError).name ===
+        'PrismaClientKnownRequestError'
+    );
   }
 }
