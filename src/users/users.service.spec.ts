@@ -1,17 +1,26 @@
-import { HashingServiceProtocol } from 'src/auth/hash/hashing.service';
+/* eslint-disable @typescript-eslint/unbound-method */
+import { HashingServiceProtocol } from '../auth/hash/hashing.service';
 import { UsersService } from './users.service';
 import { Test, TestingModule } from '@nestjs/testing';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { PrismaService } from '../prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { HttpException, HttpStatus } from '@nestjs/common';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { PayloadTokenDto } from 'src/auth/dto/payload-token.dto';
+import { PayloadTokenDto } from '../auth/dto/payload-token.dto';
 import * as path from 'node:path';
 import * as fs from 'node:fs/promises';
+
+type UploadedAvatarFile = {
+  originalname: string;
+  mimetype: string;
+  buffer: Buffer;
+};
 
 jest.mock('node:fs/promises', () => ({
   writeFile: jest.fn(),
 }));
+
+const writeFileMock = jest.mocked(fs.writeFile);
 
 describe('UsersService', () => {
   let userService: UsersService;
@@ -370,7 +379,7 @@ describe('UsersService', () => {
         message: 'Usuário foi deletado com sucesso!',
       });
     });
-  })
+  });
 
   describe('Upload Avatar User', () => {
     it('should throw NOT_FOUND when user is not found', async () => {
@@ -383,11 +392,11 @@ describe('UsersService', () => {
         iss: '',
       };
 
-      const file = {
+      const file: UploadedAvatarFile = {
         originalname: 'avatar.png',
         mimetype: 'image/png',
         buffer: Buffer.from(''),
-      } as Express.Multer.File;
+      };
 
       jest.spyOn(prismaService.user, 'findFirst').mockResolvedValue(null);
 
@@ -411,36 +420,41 @@ describe('UsersService', () => {
         iss: '',
       };
 
-      const file = {
+      const file: UploadedAvatarFile = {
         originalname: 'avatar.png',
         mimetype: 'image/png',
         buffer: Buffer.from(''),
-      } as Express.Multer.File;
-
-      const mockUser: any = {
-        id: 1,
-        name: 'Bruno',
-        email: 'bruno@teste.com',
-        avatar: null,
       };
 
-      const updatedUser: any = {
+      const mockUser = {
         id: 1,
         name: 'Bruno',
         email: 'bruno@teste.com',
+        passwordHash: 'hash_exemplo',
+        active: true,
+        avatar: null,
+        createAt: new Date(),
+      };
+
+      const updatedUser = {
+        id: 1,
+        name: 'Bruno',
+        email: 'bruno@teste.com',
+        passwordHash: 'hash_exemplo',
+        active: true,
         avatar: '1.png',
+        createAt: new Date(),
       };
 
       jest.spyOn(prismaService.user, 'findFirst').mockResolvedValue(mockUser);
       jest.spyOn(prismaService.user, 'update').mockResolvedValue(updatedUser);
-      const fsMock = require('node:fs/promises');
-      (fsMock.writeFile as jest.Mock).mockResolvedValue(undefined);
+      writeFileMock.mockResolvedValue(undefined);
 
       const result = await userService.uploadAvatarImage(tokenPayload, file);
 
       const fileLocale = path.resolve(process.cwd(), 'files', '1.png');
 
-      expect(fsMock.writeFile).toHaveBeenCalledWith(fileLocale, file.buffer);
+      expect(writeFileMock).toHaveBeenCalledWith(fileLocale, file.buffer);
       expect(prismaService.user.update).toHaveBeenCalledWith({
         where: {
           id: mockUser.id,
@@ -469,23 +483,25 @@ describe('UsersService', () => {
         iss: '',
       };
 
-      const file = {
+      const file: UploadedAvatarFile = {
         originalname: 'avatar.png',
         mimetype: 'image/png',
         buffer: Buffer.from(''),
-      } as Express.Multer.File;
+      };
 
-      const mockUser: any = {
+      const mockUser = {
         id: 1,
         name: 'Bruno',
         email: 'bruno@teste.com',
+        passwordHash: 'hash_exemplo',
+        active: true,
         avatar: null,
+        createAt: new Date(),
       };
 
       jest.spyOn(prismaService.user, 'findFirst').mockResolvedValue(mockUser);
 
-      const fsMock = require('node:fs/promises');
-      (fsMock.writeFile as jest.Mock).mockRejectedValue(new Error('Fail write error'));
+      writeFileMock.mockRejectedValue(new Error('Fail write error'));
 
       await expect(
         userService.uploadAvatarImage(tokenPayload, file),
