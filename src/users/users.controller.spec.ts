@@ -1,30 +1,47 @@
-import { PayloadTokenDto } from "src/auth/dto/payload-token.dto"
-import { CreateUserDto } from "./dto/create-user.dto"
-import { UpdateUserDto } from "./dto/update-user.dto"
-import { UsersController } from "./users.controller"
+import { PayloadTokenDto } from '../auth/dto/payload-token.dto';
+import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
+import { UsersController } from './users.controller';
+import { UsersService } from './users.service';
+
+type UploadedAvatarFile = {
+  originalname: string;
+  mimetype: string;
+  buffer: Buffer;
+};
+
+type UsersServiceMock = {
+  findOne: jest.Mock;
+  create: jest.Mock;
+  update: jest.Mock;
+  delete: jest.Mock;
+  uploadAvatarImage: jest.Mock;
+};
 
 describe('Users Controller', () => {
-  let controller: UsersController
+  let controller: UsersController;
 
-  const usersServiceMock = {
+  const usersServiceMock: UsersServiceMock = {
     findOne: jest.fn(),
     create: jest.fn(),
     update: jest.fn(),
     delete: jest.fn(),
-    uploadAvatarImage: jest.fn()
-  }
+    uploadAvatarImage: jest.fn(),
+  };
 
   beforeEach(() => {
-    controller = new UsersController(usersServiceMock as any)
-  })
+    controller = new UsersController(
+      usersServiceMock as unknown as UsersService,
+    );
+  });
 
   it('should find One user', async () => {
-    const userId = 1
+    const userId = 1;
 
-    await controller.findOneUser(userId)
+    await controller.findOneUser(userId);
 
-    expect(usersServiceMock.findOne).toHaveBeenCalledWith(userId)
-  })
+    expect(usersServiceMock.findOne).toHaveBeenCalledWith(userId);
+  });
 
   it('should create a new user', async () => {
     const createUserDto: CreateUserDto = {
@@ -46,7 +63,7 @@ describe('Users Controller', () => {
     expect(usersServiceMock.create).toHaveBeenCalledWith(createUserDto);
 
     expect(result).toEqual(mockUser);
-  })
+  });
 
   it('should update user', async () => {
     const userId = 1;
@@ -69,7 +86,7 @@ describe('Users Controller', () => {
       email: 'teste@teste.com',
     };
 
-    (usersServiceMock.update as jest.Mock).mockResolvedValue(updatedUser);
+    usersServiceMock.update.mockResolvedValue(updatedUser);
 
     const result = await controller.updateUser(
       userId,
@@ -112,11 +129,11 @@ describe('Users Controller', () => {
       iss: '',
     };
 
-    const mockFile = {
+    const mockFile: UploadedAvatarFile = {
       originalname: 'avatar.png',
       mimetype: 'image/png',
       buffer: Buffer.from('mock'),
-    } as Express.Multer.File;
+    };
 
     await controller.uploadAvatar(tokenPayload, mockFile);
 
@@ -125,4 +142,4 @@ describe('Users Controller', () => {
       mockFile,
     );
   });
-})
+});
