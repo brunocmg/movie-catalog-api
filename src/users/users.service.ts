@@ -1,12 +1,21 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { PrismaService } from '../prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { HashingServiceProtocol } from 'src/auth/hash/hashing.service';
-import { PayloadTokenDto } from 'src/auth/dto/payload-token.dto';
-import { ResponseUpdateAvatarDto, ResponseUserDto } from './dto/response-user.dto';
+import { HashingServiceProtocol } from '../auth/hash/hashing.service';
+import { PayloadTokenDto } from '../auth/dto/payload-token.dto';
+import {
+  ResponseUpdateAvatarDto,
+  ResponseUserDto,
+} from './dto/response-user.dto';
 import * as path from 'node:path';
 import * as fs from 'node:fs/promises';
+
+type UploadedAvatarFile = {
+  originalname: string;
+  mimetype: string;
+  buffer: Buffer;
+};
 
 @Injectable()
 export class UsersService {
@@ -156,10 +165,9 @@ export class UsersService {
 
   async uploadAvatarImage(
     tokenPayload: PayloadTokenDto,
-    file: Express.Multer.File,
+    file: UploadedAvatarFile,
   ): Promise<ResponseUpdateAvatarDto> {
     try {
-      const mimeType = file.mimetype;
       const fileExtension = path
         .extname(file.originalname)
         .toLowerCase()
@@ -200,7 +208,7 @@ export class UsersService {
       });
 
       return updatedUser;
-    } catch (err) {
+    } catch {
       throw new HttpException(
         'Falha ao atualizar o avatar do usuário!',
         HttpStatus.BAD_REQUEST,
