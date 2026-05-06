@@ -1,12 +1,37 @@
-import { Body, Controller, Delete, Get, HttpStatus, Param, ParseFilePipeBuilder, ParseIntPipe, Patch, Post, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpStatus,
+  Param,
+  ParseFilePipeBuilder,
+  ParseIntPipe,
+  Patch,
+  Post,
+  UploadedFile,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { AuthTokenGuard } from 'src/auth/guards/auth-token.guard';
-import { TokenPayloadParam } from 'src/auth/param/token-payload.param';
-import { PayloadTokenDto } from 'src/auth/dto/payload-token.dto';
-import { ApiBearerAuth, ApiBody, ApiConsumes, ApiOperation } from '@nestjs/swagger';
+import { AuthTokenGuard } from '../auth/guards/auth-token.guard';
+import { TokenPayloadParam } from '../auth/param/token-payload.param';
+import { PayloadTokenDto } from '../auth/dto/payload-token.dto';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiConsumes,
+  ApiOperation,
+} from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
+
+type UploadedAvatarFile = {
+  originalname: string;
+  mimetype: string;
+  buffer: Buffer;
+};
 
 @Controller('users')
 export class UsersController {
@@ -72,13 +97,13 @@ export class UsersController {
           fileType: /jpeg|jpg|png/g,
         })
         .addMaxSizeValidator({
-          maxSize: 3 * (1024 * 1024), 
+          maxSize: 3 * (1024 * 1024),
         })
         .build({
           errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY,
         }),
     )
-    file: Express.Multer.File,
+    file: UploadedAvatarFile,
   ) {
     return this.userService.uploadAvatarImage(tokenPayload, file);
   }

@@ -1,6 +1,6 @@
 import { HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common';
 import { SignInDto } from './dto/signin.dto';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { PrismaService } from '../prisma/prisma.service';
 import { HashingServiceProtocol } from './hash/hashing.service';
 import jwtConfig from './config/jwt.config';
 import type { ConfigType } from '@nestjs/config';
@@ -23,7 +23,7 @@ export class AuthService {
     const user = await this.prisma.user.findFirst({
       where: {
         email: signInDto.email,
-        active: true
+        active: true,
       },
     });
 
@@ -56,7 +56,7 @@ export class AuthService {
         expiresIn: this.jwtConfiguration.jwtTtl,
         audience: this.jwtConfiguration.audience,
         issuer: this.jwtConfiguration.issuer,
-      } as any,
+      },
     );
 
     return {

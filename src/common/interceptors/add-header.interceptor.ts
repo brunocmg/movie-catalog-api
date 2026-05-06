@@ -10,8 +10,8 @@ import { Observable } from 'rxjs';
 export class AddHeaderInterceptior implements NestInterceptor {
   intercept(
     context: ExecutionContext,
-    next: CallHandler<any>,
-  ): Observable<any> | Promise<Observable<any>> {
+    next: CallHandler<unknown>,
+  ): Observable<unknown> | Promise<Observable<unknown>> {
     const response = context.switchToHttp().getResponse();
 
     response.setHeader('X-Custom', 'Valor chave 123');

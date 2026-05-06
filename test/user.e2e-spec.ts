@@ -2,12 +2,11 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
 import { App } from 'supertest/types';
-import { AppModule } from '../src/app/app.module';
-import { MoviesModule } from 'src/movies/movies.module';
-import { UsersModule } from 'src/users/users.module';
-import { AuthModule } from 'src/auth/auth.module';
+import { MoviesModule } from '../src/movies/movies.module';
+import { UsersModule } from '../src/users/users.module';
+import { AuthModule } from '../src/auth/auth.module';
 import * as dotenv from 'dotenv';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { PrismaService } from '../src/prisma/prisma.service';
 import { execSync } from 'child_process';
 import { ConfigModule } from '@nestjs/config';
 
