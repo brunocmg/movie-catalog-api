@@ -20,6 +20,8 @@ model Movie{
   director    String? 
   year        Int
 
+  watchedBy   User[]
+
   @@map("movies")
 }
 
@@ -32,6 +34,8 @@ model User{
   avatar String?
 
   createAt DateTime? @default(now())
+
+  watchedMovies Movie[]
 
   @@map("users")
 }
