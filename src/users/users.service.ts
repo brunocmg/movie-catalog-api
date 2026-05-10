@@ -17,6 +17,10 @@ type UploadedAvatarFile = {
   buffer: Buffer;
 };
 
+type MovieName = {
+  name: string;
+};
+
 @Injectable()
 export class UsersService {
   constructor(
@@ -33,10 +37,21 @@ export class UsersService {
         id: true,
         name: true,
         email: true,
+        watchedMovies: {
+          select: {
+            name: true,
+          },
+        },
       },
     });
 
-    if (user) return user;
+    if (user) {
+      const movieNames = (user.watchedMovies as MovieName[]).map((m) => m.name);
+      return {
+        ...user,
+        watchedMovies: movieNames,
+      };
+    }
 
     throw new HttpException('Usuário não encontrado!', HttpStatus.BAD_REQUEST);
   }
@@ -57,10 +72,19 @@ export class UsersService {
           id: true,
           name: true,
           email: true,
+          watchedMovies: {
+            select: {
+              name: true,
+            },
+          },
         },
       });
 
-      return user;
+      const movieNames = (user.watchedMovies as MovieName[]).map((m) => m.name);
+      return {
+        ...user,
+        watchedMovies: movieNames,
+      };
     } catch (err) {
       console.log(err);
       throw new HttpException(
@@ -116,10 +140,21 @@ export class UsersService {
           id: true,
           name: true,
           email: true,
+          watchedMovies: {
+            select: {
+              name: true,
+            },
+          },
         },
       });
 
-      return updateUser;
+      const movieNames = (updateUser.watchedMovies as MovieName[]).map(
+        (m) => m.name,
+      );
+      return {
+        ...updateUser,
+        watchedMovies: movieNames,
+      };
     } catch (err) {
       console.log(err);
       throw new HttpException(
@@ -203,11 +238,22 @@ export class UsersService {
           id: true,
           name: true,
           email: true,
+          watchedMovies: {
+            select: {
+              name: true,
+            },
+          },
           avatar: true,
         },
       });
 
-      return updatedUser;
+      const movieNames = (updatedUser.watchedMovies as MovieName[]).map(
+        (m) => m.name,
+      );
+      return {
+        ...updatedUser,
+        watchedMovies: movieNames,
+      };
     } catch {
       throw new HttpException(
         'Falha ao atualizar o avatar do usuário!',
