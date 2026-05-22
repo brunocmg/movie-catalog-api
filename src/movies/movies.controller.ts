@@ -7,6 +7,7 @@ import {
   Param,
   Delete,
   ParseIntPipe,
+  Query,
 } from '@nestjs/common';
 import { MoviesService } from './movies.service';
 import { CreateMovieDto } from './dto/create-movie.dto';
@@ -20,6 +21,8 @@ import {
   ApiOperation,
 } from '@nestjs/swagger';
 import { ResponseMovieDto } from './dto/response-movie.dto';
+import { PaginationDto } from './dto/pagination.dto';
+import { PaginatedMoviesDto } from './dto/paginated-movies.dto';
 
 @Controller('movies')
 export class MoviesController {
@@ -41,11 +44,11 @@ export class MoviesController {
   @ApiOperation({ summary: 'Find all movies' })
   @ApiOkResponse({
     description: 'Movies found successfully',
-    type: [ResponseMovieDto],
+    type: PaginatedMoviesDto,
   })
   @ApiInternalServerErrorResponse({ description: 'Failed to find movies' })
-  findAll() {
-    return this.moviesService.findAll();
+  findAll(@Query() paginationDto: PaginationDto) {
+    return this.moviesService.findAll(paginationDto);
   }
 
   @Get(':id')
