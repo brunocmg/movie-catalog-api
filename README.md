@@ -1,93 +1,183 @@
-# API REST Movies
+# 🎬 Movie Catalog API
 
-A robust REST API for managing movies, users, and authentication built with NestJS and TypeScript.
+A RESTful API for managing movies and users, built with NestJS and TypeScript. Users can register, authenticate, browse movies, and track which ones they've watched.
 
-## 📋 Description
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/brunocmg/movie-catalog-api/blob/main/LICENSE)
+[![NestJS](https://img.shields.io/badge/NestJS-E0234E?style=flat&logo=nestjs&logoColor=white)](https://nestjs.com/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=flat&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![Prisma](https://img.shields.io/badge/Prisma-2D3748?style=flat&logo=prisma&logoColor=white)](https://www.prisma.io/)
+[![Docker](https://img.shields.io/badge/Docker-2496ED?style=flat&logo=docker&logoColor=white)](https://www.docker.com/)
 
-This is a complete REST API for movie management with user authentication functionality, role-based access control (admin/user), and integration with PostgreSQL database via Prisma ORM.
+---
 
-### Main Features
+## 📋 Table of Contents
 
-- **JWT Authentication**: Secure authentication system with JWT tokens
-- **User Management**: Create, update, and list users
-- **Movie Management**: Complete CRUD for movies (create, read, update, delete)
-- **Access Control**: Guards to protect administrative routes
-- **Password Hashing**: Secure implementation with bcrypt
-- **Database**: PostgreSQL with Prisma ORM
-- **Logging and Interceptors**: Integrated logging system and custom interceptors
-- **Exception Handling**: Global filter for application exceptions
-- **API Documentation**: Swagger integration for interactive API exploration
+- [Overview](#-overview)
+- [Features](#-features)
+- [Tech Stack](#-tech-stack)
+- [Database Schema](#-database-schema)
+- [Getting Started](#-getting-started)
+- [Environment Variables](#-environment-variables)
+- [API Documentation](#-api-documentation)
+- [Running Tests](#-running-tests)
+- [License](#-license)
 
-## 🛠️ Technologies Used
+---
 
-- **NestJS** - Progressive backend framework
-- **TypeScript** - Typed language
-- **Prisma ORM** - Database ORM
-- **PostgreSQL** - Relational database
-- **JWT** - Secure authentication
-- **Bcrypt** - Password hashing
-- **Jest** - Testing framework
-- **Swagger** - API documentation
+## 📖 Overview
 
-## 📦 Installation
+Movie Catalog API allows you to:
+
+- **Create and manage movies** with full CRUD operations
+- **Register and manage users** with secure authentication
+- **Assign watched movies to users**, creating a relationship between entities
+- **Authenticate** using JWT with access and refresh tokens
+
+---
+
+## ✨ Features
+
+- ✅ Full CRUD for movies and users
+- ✅ JWT authentication with refresh token
+- ✅ Password hashing with bcrypt
+- ✅ Access control and role-based guards
+- ✅ Role-based access control (admin/user)
+- ✅ DTO validation with class-validator and class-transformer
+- ✅ Pagination on list endpoints
+- ✅ Global exception handling
+- ✅ Logging with interceptors
+- ✅ API documentation with Swagger
+- ✅ Health check endpoint
+- ✅ Database seed
+- ✅ Unit and E2E tests
+- ✅ Docker support
+- ✅ ESLint + Prettier
+
+---
+
+## 🛠 Tech Stack
+
+| Technology | Purpose |
+|---|---|
+| NestJS | Framework |
+| TypeScript | Language |
+| Prisma | ORM |
+| PostgreSQL | Database |
+| JWT | Authentication |
+| bcrypt | Password hashing |
+| Jest | Testing |
+| Swagger | API documentation |
+| Docker | Containerization |
+| class-validator | DTO validation |
+| class-transformer | Data transformation |
+
+---
+
+## 🗄 Database Schema
+
+> Entity relationship diagram
+
+![Database Schema](./docs/images/db-schema.png)
+
+> Beekeeper Studio — database view
+
+![Beekeeper](./docs/images/beekeeper.png)
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+- [Node.js](https://nodejs.org/) >= 20
+- [Docker](https://www.docker.com/) and Docker Compose
+
+### 1. Clone the repository
 
 ```bash
-# Install dependencies
-npm install
+git clone https://github.com/brunocmg/movie-catalog-api.git
+cd movie-catalog-api
 ```
 
-## ⚙️ Configuration
-
-### Environment Variables
-
-Create a `.env` file in the project root with the following variables:
-
-```env
-DATABASE_URL="postgresql://user:password@localhost:5432/movies_db"
-JWT_SECRET="your-secret-key"
-JWT_EXPIRATION="3600"
-```
-
-### Running Migrations
+### 2. Configure environment variables
 
 ```bash
-# Run migrations
-npx prisma migrate dev
-
-# Generate Prisma Client
-npx prisma generate
+cp .env.example .env
 ```
 
-## 🚀 Running the Project
+Fill in the values in `.env` (see [Environment Variables](#-environment-variables)).
+
+### 3. Start with Docker
 
 ```bash
-# Development
-npm run start
-
-# Watch mode (auto-restart)
-npm run start:dev
-
-# Production
-npm run start:prod
+docker compose up --build
 ```
 
-The API will be available at `http://localhost:3000`
+The API will be available at `http://localhost:3000`.
+
+### 4. Run the seed (optional)
+
+```bash
+docker compose exec api npx prisma db seed
+```
+or (whitout docker)
+```bash
+npx prisma db seed
+```
+
+---
 
 ## 📚 API Documentation
 
-Once the project is running, you can access the interactive Swagger documentation at:
+Swagger UI is available at:
 
 ```
 http://localhost:3000/api
 ```
 
-The Swagger UI provides an interactive interface where you can:
-- View all available endpoints
-- See request and response schemas
-- Test endpoints directly from the browser
-- Understand authentication requirements
+> Swagger UI preview
 
-## 🧪 Testing
+![Swagger](./docs/images/swagger.png)
+
+### Main endpoints
+
+| Method | Endpoint | Description | Auth |
+|---|---|---|---|
+| POST | `/auth` | Login and get tokens | ❌ |
+| GET | `/movies` | List all movies (paginated) | ❌ |
+| POST | `/movies` | Create a movie | ❌ |
+| GET | `/movies/:id` | Get movie by ID | ❌ |
+| PATCH | `/movies/:id` | Update a movie | ❌ |
+| DELETE | `/movies/:id` | Delete a movie | ❌ |
+| GET | `/users` | List all users | ❌ |
+| GET | `/users/:id` | Get user by ID | ❌ |
+| POST | `/users` | Create a user | ❌ |
+| PATCH | `/users/:id` | Update a user | ✅ |
+| DELETE | `/users/:id` | Delete a user | ✅ |
+| POST | `/users/upload` | Upload user avatar | ✅ |
+| GET | `/health` | Health check | ❌ |
+
+---
+
+## 📁 Project Structure
+
+```
+src/
+├── main.ts
+├── app/
+├── auth/
+├── users/
+├── movies/
+├── prisma/
+└── common/
+    ├── filters/
+    ├── guards/
+    ├── interceptors/
+    └── middlewares/
+```
+
+## 🧪 Running Tests
 
 ```bash
 # Unit tests
@@ -96,59 +186,18 @@ npm run test
 # E2E tests
 npm run test:e2e
 
-# Test coverage
+# Coverage
 npm run test:cov
 ```
 
-## 📍 Main Endpoints
+---
 
-### Authentication
-- `POST /auth/signin` - User login
-- `POST /auth/signup` - Register new user
+## 🌐 Deploy
 
-### Users
-- `GET /users` - List all users (admin only)
-- `GET /users/:id` - Get user data
-- `PATCH /users/:id` - Update user
-- `DELETE /users/:id` - Delete user (admin only)
+Live API: <!-- add deploy URL here -->
 
-### Movies
-- `GET /movies` - List all movies
-- `GET /movies/:id` - Get movie details
-- `POST /movies` - Create new movie (admin only)
-- `PATCH /movies/:id` - Update movie (admin only)
-- `DELETE /movies/:id` - Delete movie (admin only)
-
-## 📁 Project Structure
-
-```
-src/
-├── main.ts                 # Application entry point
-├── app/                    # Main module
-├── auth/                   # Authentication module
-├── users/                  # Users module
-├── movies/                 # Movies module
-├── prisma/                 # Prisma module
-├── common/                 # Shared components
-│   ├── filters/           # Exception filters
-│   ├── guards/            # Authentication guards
-│   ├── interceptors/       # Custom interceptors
-│   └── middlewares/        # Middlewares
-```
-
-## 🐳 Docker
-
-> ⚠️ **STATUS**: Docker implementation is under development and will be completed soon.
-> For now, run the application locally following the installation instructions above.
-
-## 👨‍💻 Author
-
-<<<<<<< HEAD
-**Bruno** - [GitHub](https://github.com)
+---
 
 ## 📄 License
 
-This project is proprietary and belongs to Bruno. All rights reserved.
-=======
-**Bruno Gomes** - [GitHub](https://github.com)
->>>>>>> 23a0028e11e013e8e8bc1250fbf86b0a0c18dd8d
+This project is licensed under the [MIT License](./LICENSE).
