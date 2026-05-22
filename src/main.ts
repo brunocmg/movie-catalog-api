@@ -26,6 +26,7 @@ async function bootstrap() {
     .setTitle('Movies List')
     .setDescription('Movies list API')
     .setVersion('1.0')
+    .addBearerAuth()
     .build();
 
   const documentFactory = () =>
