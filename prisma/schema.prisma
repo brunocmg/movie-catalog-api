@@ -6,26 +6,26 @@
 
 generator client {
   provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
-model Movie{
+model Movie {
   id          Int @id @default(autoincrement())
   name        String
   genre       String?
   director    String? 
   year        Int
 
-  watchedBy   User[]
+  watchedBy   WatchedMovie[]
 
   @@map("movies")
 }
 
-model User{
+model User {
   id Int @id @default(autoincrement())
   name String
   email String @unique
@@ -35,7 +35,19 @@ model User{
 
   createAt DateTime? @default(now())
 
-  watchedMovies Movie[]
+  watchedMovies WatchedMovie[]
 
   @@map("users")
+}
+
+model WatchedMovie {
+  userId    Int      @map("user_id")
+  movieId   Int      @map("movie_id")
+  watchedAt DateTime @default(now()) @map("watched_at")
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  movie Movie @relation(fields: [movieId], references: [id], onDelete: Cascade)
+
+  @@id([userId, movieId])
+  @@map("watched_movies")
 }
