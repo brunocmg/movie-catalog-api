@@ -1,8 +1,7 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call */
 import 'dotenv/config';
 import { Pool } from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
-import { PrismaClient } from './generated/client';
+import { PrismaClient } from '.prisma/client';
 
 const connectionString = `${process.env.DATABASE_URL}`;
 const pool = new Pool({ connectionString });
@@ -74,24 +73,26 @@ async function main() {
     },
   });
   for (const u of usersSeed) {
-    const connectMovies = u.movieIds.map((id) => ({ id }));
-
-    await prisma.user.upsert({
+    const user = await prisma.user.upsert({
       where: { email: u.email },
-      update: {
-        watchedMovies: {
-          connect: connectMovies,
-        },
-      },
+      update: {},
       create: {
         email: u.email,
         name: u.name,
         passwordHash: u.passwordHash,
-        watchedMovies: {
-          connect: connectMovies,
-        },
       },
     });
+
+    for (const movieId of u.movieIds) {
+      await pool.query(
+        `
+          INSERT INTO watched_movies (user_id, movie_id)
+          VALUES ($1, $2)
+          ON CONFLICT (user_id, movie_id) DO NOTHING
+        `,
+        [user.id, movieId],
+      );
+    }
   }
 
   console.log({
@@ -106,7 +107,7 @@ main()
   .then(async () => {
     await prisma.$disconnect();
   })
-  .catch(async (e) => {
+  .catch(async (e: unknown) => {
     console.error(e);
     await prisma.$disconnect();
     process.exit(1);
