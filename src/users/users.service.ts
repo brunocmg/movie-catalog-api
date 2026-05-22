@@ -18,7 +18,9 @@ type UploadedAvatarFile = {
 };
 
 type MovieName = {
-  name: string;
+  movie: {
+    name: string;
+  };
 };
 
 @Injectable()
@@ -39,14 +41,20 @@ export class UsersService {
         email: true,
         watchedMovies: {
           select: {
-            name: true,
+            movie: {
+              select: {
+                name: true,
+              },
+            },
           },
         },
       },
     });
 
     if (user) {
-      const movieNames = (user.watchedMovies as MovieName[]).map((m) => m.name);
+      const movieNames = (user.watchedMovies as MovieName[]).map(
+        (m) => m.movie.name,
+      );
       return {
         ...user,
         watchedMovies: movieNames,
@@ -74,13 +82,19 @@ export class UsersService {
           email: true,
           watchedMovies: {
             select: {
-              name: true,
+              movie: {
+                select: {
+                  name: true,
+                },
+              },
             },
           },
         },
       });
 
-      const movieNames = (user.watchedMovies as MovieName[]).map((m) => m.name);
+      const movieNames = (user.watchedMovies as MovieName[]).map(
+        (m) => m.movie.name,
+      );
       return {
         ...user,
         watchedMovies: movieNames,
@@ -142,14 +156,18 @@ export class UsersService {
           email: true,
           watchedMovies: {
             select: {
-              name: true,
+              movie: {
+                select: {
+                  name: true,
+                },
+              },
             },
           },
         },
       });
 
       const movieNames = (updateUser.watchedMovies as MovieName[]).map(
-        (m) => m.name,
+        (m) => m.movie.name,
       );
       return {
         ...updateUser,
@@ -240,7 +258,11 @@ export class UsersService {
           email: true,
           watchedMovies: {
             select: {
-              name: true,
+              movie: {
+                select: {
+                  name: true,
+                },
+              },
             },
           },
           avatar: true,
@@ -248,7 +270,7 @@ export class UsersService {
       });
 
       const movieNames = (updatedUser.watchedMovies as MovieName[]).map(
-        (m) => m.name,
+        (m) => m.movie.name,
       );
       return {
         ...updatedUser,
