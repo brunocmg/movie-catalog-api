@@ -61,3 +61,4 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
 # Ignore any previously generated Prisma client under src/
 /src/generated/
+prisma/generated
