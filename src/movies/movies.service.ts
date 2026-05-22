@@ -7,6 +7,8 @@ import { CreateMovieDto } from './dto/create-movie.dto';
 import { UpdateMovieDto } from './dto/update-movie.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { ResponseMovieDto } from './dto/response-movie.dto';
+import { PaginationDto } from './dto/pagination.dto';
+import { PaginatedMoviesDto } from './dto/paginated-movies.dto';
 
 type PrismaKnownRequestError = {
   name: 'PrismaClientKnownRequestError';
@@ -33,12 +35,27 @@ export class MoviesService {
     }
   }
 
-  async findAll(): Promise<ResponseMovieDto[]> {
+  async findAll(paginationDto: PaginationDto): Promise<PaginatedMoviesDto> {
     try {
-      const allMovies = await this.prisma.movie.findMany({
-        orderBy: { id: 'asc' },
-      });
-      return allMovies;
+      const { limit = 10, offset = 0 } = paginationDto;
+
+      const [allMovies, total] = await this.prisma.$transaction([
+        this.prisma.movie.findMany({
+          orderBy: { id: 'asc' },
+          take: limit,
+          skip: offset,
+        }),
+        this.prisma.movie.count(),
+      ]);
+
+      return {
+        data: allMovies,
+        meta: {
+          limit,
+          offset,
+          total,
+        },
+      };
     } catch (err) {
       console.error(err);
       throw new InternalServerErrorException('Failed to find movies.');
