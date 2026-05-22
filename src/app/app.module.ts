@@ -5,6 +5,7 @@ import { AuthModule } from '../auth/auth.module';
 import { ConfigModule } from '@nestjs/config';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
+import { HealthModule } from '../health/health.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { join } from 'path';
     MoviesModule,
     UsersModule,
     AuthModule,
+    HealthModule,
     ServeStaticModule.forRoot({
       rootPath: join(__dirname, '..', '..', 'files'),
       serveRoot: '/files',
