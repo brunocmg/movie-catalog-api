@@ -170,6 +170,7 @@ src/
 ├── users/
 ├── movies/
 ├── prisma/
+├── health/
 └── common/
     ├── filters/
     ├── guards/
@@ -194,7 +195,7 @@ npm run test:cov
 
 ## 🌐 Deploy
 
-Live API: <!-- add deploy URL here -->
+Live API: https://movie-catalog-api-54m7.onrender.com/docs
 
 ---
 
