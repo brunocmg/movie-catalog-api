@@ -46,6 +46,8 @@ type UploadedAvatarFile = {
 export class UsersController {
   constructor(private readonly userService: UsersService) {}
 
+  @UseGuards(AuthTokenGuard)
+  @ApiBearerAuth()
   @Get(':id')
   @ApiOperation({ summary: 'Find one user by id' })
   @ApiOkResponse({
