@@ -8,12 +8,14 @@ import {
   Delete,
   ParseIntPipe,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import { MoviesService } from './movies.service';
 import { CreateMovieDto } from './dto/create-movie.dto';
 import { UpdateMovieDto } from './dto/update-movie.dto';
 import {
   ApiBadRequestResponse,
+  ApiBearerAuth,
   ApiCreatedResponse,
   ApiInternalServerErrorResponse,
   ApiNotFoundResponse,
@@ -23,11 +25,14 @@ import {
 import { ResponseMovieDto } from './dto/response-movie.dto';
 import { PaginationDto } from './dto/pagination.dto';
 import { PaginatedMoviesDto } from './dto/paginated-movies.dto';
+import { AuthTokenGuard } from '../auth/guards/auth-token.guard';
 
 @Controller('movies')
 export class MoviesController {
   constructor(private readonly moviesService: MoviesService) {}
 
+  @UseGuards(AuthTokenGuard)
+  @ApiBearerAuth()
   @Post()
   @ApiOperation({ summary: 'Register a new movie' })
   @ApiCreatedResponse({
@@ -63,6 +68,8 @@ export class MoviesController {
     return this.moviesService.findOne(id);
   }
 
+  @UseGuards(AuthTokenGuard)
+  @ApiBearerAuth()
   @Patch(':id')
   @ApiOperation({ summary: 'Update a movie' })
   @ApiOkResponse({
@@ -78,6 +85,8 @@ export class MoviesController {
     return this.moviesService.update(id, updateMovieDto);
   }
 
+  @UseGuards(AuthTokenGuard)
+  @ApiBearerAuth()
   @Delete(':id')
   @ApiOperation({ summary: 'Delete a movie' })
   @ApiOkResponse({
