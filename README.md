@@ -128,12 +128,40 @@ npx prisma db seed
 
 ---
 
+## 🔐 Environment Variables
+
+To run this project locally, you will need to add the following environment variables to your `.env` file. You can copy the structure below:
+
+```env
+# Database Configuration
+DB_USER=postgres
+DB_PASSWORD=your_db_password
+DB_NAME=catalog
+DB_HOST=db
+DB_PORT=5432
+DATABASE_URL="postgresql://postgres:your_db_password@db:5432/catalog"
+
+# JWT Authentication
+JWT_SECRET=your_jwt_secret_key
+JWT_TOKEN_AUDIENCE=http://localhost:3000
+JWT_TOKEN_ISSUER=http://localhost:3000
+JWT_TTL="30d"
+
+# Application Settings
+UPLOAD_DIR=./files
+PRISMA_GENERATE=true
+NODE_ENV=development
+PORT=3000
+```
+
+---
+
 ## 📚 API Documentation
 
 Swagger UI is available at:
 
 ```
-http://localhost:3000/api
+http://localhost:3000/docs
 ```
 
 > Swagger UI preview
