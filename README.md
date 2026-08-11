@@ -174,12 +174,11 @@ http://localhost:3000/docs
 |---|---|---|---|
 | POST | `/auth` | Login and get tokens | ❌ |
 | GET | `/movies` | List all movies (paginated) | ❌ |
-| POST | `/movies` | Create a movie | ❌ |
+| POST | `/movies` | Create a movie | ✅ |
 | GET | `/movies/:id` | Get movie by ID | ❌ |
-| PATCH | `/movies/:id` | Update a movie | ❌ |
-| DELETE | `/movies/:id` | Delete a movie | ❌ |
-| GET | `/users` | List all users | ❌ |
-| GET | `/users/:id` | Get user by ID | ❌ |
+| PATCH | `/movies/:id` | Update a movie | ✅ |
+| DELETE | `/movies/:id` | Delete a movie | ✅ |
+| GET | `/users/:id` | Get user by ID | ✅ |
 | POST | `/users` | Create a user | ❌ |
 | PATCH | `/users/:id` | Update a user | ✅ |
 | DELETE | `/users/:id` | Delete a user | ✅ |
