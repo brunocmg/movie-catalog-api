@@ -15,9 +15,7 @@ export class AuthService {
     @Inject(jwtConfig.KEY)
     private readonly jwtConfiguration: ConfigType<typeof jwtConfig>,
     private readonly jwtService: JwtService,
-  ) {
-    console.log(jwtConfiguration);
-  }
+  ) {}
 
   async authenticate(signInDto: SignInDto) {
     const user = await this.prisma.user.findFirst({

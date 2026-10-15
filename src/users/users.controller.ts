@@ -85,7 +85,6 @@ export class UsersController {
     @Body() updateUserDto: UpdateUserDto,
     @TokenPayloadParam() tokenPayload: PayloadTokenDto,
   ) {
-    console.log('Payload recebido: ', tokenPayload);
     return this.userService.update(id, updateUserDto, tokenPayload);
   }
 

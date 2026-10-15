@@ -3,6 +3,7 @@ import {
   ExecutionContext,
   Inject,
   Injectable,
+  Logger,
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
@@ -22,6 +23,7 @@ export class AuthTokenGuard implements CanActivate {
   constructor(
     private readonly jwtService: JwtService,
     private readonly prisma: PrismaService,
+    private readonly logger = new Logger(AuthTokenGuard.name),
 
     @Inject(jwtConfig.KEY)
     private readonly jwtConfiguration: ConfigType<typeof jwtConfig>,
@@ -52,8 +54,8 @@ export class AuthTokenGuard implements CanActivate {
       if (!userStatus?.active) {
         throw new UnauthorizedException('Acesso não autorizado.');
       }
-    } catch (err) {
-      console.log(err);
+    } catch {
+      this.logger.warn('Falha ao validar token');
       throw new UnauthorizedException('Acesso não autorizado');
     }
 
