@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import { SignInDto } from './dto/signin.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { HashingServiceProtocol } from './hash/hashing.service';
@@ -25,24 +25,17 @@ export class AuthService {
       },
     });
 
-    if (!user) {
-      throw new HttpException(
-        'Falha ao autenticar usuário',
-        HttpStatus.UNAUTHORIZED,
-      );
-    }
+    const DUMMY_HASH =
+      '$2a$12$PblaqG3gtsWMmGxaVlZiXuBYhinTquvONd7P.e5sIkql17h6w.7Tm';
 
+    const hash = user?.passwordHash ?? DUMMY_HASH;
     const passwordIsValid = await this.hashingService.compare(
       signInDto.password,
-      user.passwordHash,
+      hash,
     );
 
-    if (!passwordIsValid) {
-      throw new HttpException(
-        'Senha/usuário incorretos',
-        HttpStatus.UNAUTHORIZED,
-      );
-    }
+    if (!user || !passwordIsValid)
+      throw new UnauthorizedException('Invalid credentials');
 
     const token = await this.jwtService.signAsync(
       {
