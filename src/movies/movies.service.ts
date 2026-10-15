@@ -18,10 +18,8 @@ type PrismaKnownRequestError = {
 
 @Injectable()
 export class MoviesService {
-  constructor(
-    private prisma: PrismaService,
-    private readonly logger = new Logger(),
-  ) {}
+  private readonly logger = new Logger(MoviesService.name);
+  constructor(private prisma: PrismaService) {}
   async create(createMovieDto: CreateMovieDto): Promise<ResponseMovieDto> {
     try {
       const newMovie = await this.prisma.movie.create({
