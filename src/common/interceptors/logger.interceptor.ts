@@ -3,31 +3,28 @@ import {
   NestInterceptor,
   CallHandler,
   Injectable,
+  Logger,
 } from '@nestjs/common';
 import { Observable, tap } from 'rxjs';
 import { Request } from 'express';
 
-type RequestWithUser = Request & {
-  user?: unknown;
-};
-
 @Injectable()
 export class LoggerInterceptor implements NestInterceptor {
+  private readonly logger = new Logger(LoggerInterceptor.name);
+
   intercept(
     context: ExecutionContext,
     next: CallHandler<unknown>,
   ): Observable<unknown> | Promise<Observable<unknown>> {
-    const request = context.switchToHttp().getRequest<RequestWithUser>();
-    const method = request.method;
-    const url = request.url;
+    const request = context.switchToHttp().getRequest<Request>();
+    const { method, url } = request;
     const now = Date.now();
 
-    console.log(request.user);
-    console.log(`[REQUEST] ${method} ${url} - Inicio da req`);
+    this.logger.log(`[REQUEST] ${method} ${url} - Inicio da req`);
 
     return next.handle().pipe(
       tap(() => {
-        console.log(`[RESPONSE] ${method} ${url} - ${Date.now() - now}ms`);
+        this.logger.log(`[RESPONSE] ${method} ${url} - ${Date.now() - now}ms`);
       }),
     );
   }

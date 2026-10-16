@@ -1,4 +1,9 @@
-import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  Logger,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { SignInDto } from './dto/signin.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { HashingServiceProtocol } from './hash/hashing.service';
@@ -8,6 +13,7 @@ import { JwtService } from '@nestjs/jwt';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
   constructor(
     private prisma: PrismaService,
     private readonly hashingService: HashingServiceProtocol,
@@ -26,7 +32,7 @@ export class AuthService {
     });
 
     const DUMMY_HASH =
-      '$2a$12$PblaqG3gtsWMmGxaVlZiXuBYhinTquvONd7P.e5sIkql17h6w.7Tm';
+      '$2a$10$/b/STTR8KX5yP3Ln6V.o7u1qUxDqmOEZRX3kzj/ERGzlmoz/gYRT6';
 
     const hash = user?.passwordHash ?? DUMMY_HASH;
     const passwordIsValid = await this.hashingService.compare(
