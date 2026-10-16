@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   InternalServerErrorException,
+  Logger,
 } from '@nestjs/common';
 import { CreateMovieDto } from './dto/create-movie.dto';
 import { UpdateMovieDto } from './dto/update-movie.dto';
@@ -9,6 +10,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { ResponseMovieDto } from './dto/response-movie.dto';
 import { PaginationDto } from './dto/pagination.dto';
 import { PaginatedMoviesDto } from './dto/paginated-movies.dto';
+import { Prisma } from '@prisma/client';
 
 type PrismaKnownRequestError = {
   name: 'PrismaClientKnownRequestError';
@@ -16,6 +18,7 @@ type PrismaKnownRequestError = {
 
 @Injectable()
 export class MoviesService {
+  private readonly logger = new Logger(MoviesService.name);
   constructor(private prisma: PrismaService) {}
   async create(createMovieDto: CreateMovieDto): Promise<ResponseMovieDto> {
     try {
@@ -29,7 +32,10 @@ export class MoviesService {
       });
       return newMovie;
     } catch (err) {
-      console.error(err);
+      this.logger.error(
+        'Falha ao cadastrar filme',
+        err instanceof Error ? err.stack : String(err),
+      );
       if (this.isPrismaKnownRequestError(err)) throw err;
       throw new InternalServerErrorException('Movie registration failed.');
     }
@@ -57,13 +63,16 @@ export class MoviesService {
         },
       };
     } catch (err) {
-      console.error(err);
+      this.logger.error(
+        'Falha ao buscar filmes',
+        err instanceof Error ? err.stack : String(err),
+      );
       throw new InternalServerErrorException('Failed to find movies.');
     }
   }
 
   async findOne(id: number): Promise<ResponseMovieDto> {
-    const movie = await this.prisma.movie.findFirst({ where: { id } });
+    const movie = await this.prisma.movie.findUnique({ where: { id } });
     if (movie) return movie;
 
     throw new NotFoundException('Movie not found.');
@@ -94,19 +103,15 @@ export class MoviesService {
 
   async remove(id: number) {
     try {
-      const findMovie = await this.prisma.movie.findFirst({ where: { id } });
-
-      if (!findMovie) throw new NotFoundException('Movie not found.');
-
-      const deleted = await this.prisma.movie.delete({
-        where: { id: findMovie.id },
-      });
-
-      return deleted;
+      return await this.prisma.movie.delete({ where: { id } });
     } catch (err) {
-      console.error(err);
-      if (this.isPrismaKnownRequestError(err)) throw err;
-      throw new InternalServerErrorException('Failed to delete movie.');
+      if (
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === 'P2025'
+      ) {
+        throw new NotFoundException('Movie not found.');
+      }
+      throw err;
     }
   }
 

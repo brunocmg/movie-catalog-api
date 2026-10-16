@@ -3,6 +3,7 @@ import {
   ExecutionContext,
   Inject,
   Injectable,
+  Logger,
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
@@ -19,10 +20,11 @@ type RequestWithTokenPayload = Request & {
 
 @Injectable()
 export class AuthTokenGuard implements CanActivate {
+  private readonly logger = new Logger(AuthTokenGuard.name);
+
   constructor(
     private readonly jwtService: JwtService,
     private readonly prisma: PrismaService,
-
     @Inject(jwtConfig.KEY)
     private readonly jwtConfiguration: ConfigType<typeof jwtConfig>,
   ) {}
@@ -37,36 +39,39 @@ export class AuthTokenGuard implements CanActivate {
       throw new UnauthorizedException('Token não encontrado!');
     }
 
+    let payload: PayloadTokenDto;
+
     try {
-      const payload = await this.jwtService.verifyAsync<PayloadTokenDto>(
-        token,
-        this.jwtConfiguration,
-      );
-
-      request[REQUEST_TOKEN_PAYLOAD_NAME] = payload;
-
-      const userStatus = await this.prisma.user.findFirst({
-        where: { id: payload.sub },
+      payload = await this.jwtService.verifyAsync<PayloadTokenDto>(token, {
+        secret: this.jwtConfiguration.secret,
+        audience: this.jwtConfiguration.audience,
+        issuer: this.jwtConfiguration.issuer,
       });
-
-      if (!userStatus?.active) {
-        throw new UnauthorizedException('Acesso não autorizado.');
-      }
-    } catch (err) {
-      console.log(err);
+    } catch {
+      this.logger.warn('Falha ao validar token');
       throw new UnauthorizedException('Acesso não autorizado');
     }
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: payload.sub },
+      select: { active: true },
+    });
+
+    if (!user?.active) {
+      this.logger.warn(
+        `Acesso negado: usuário inexistente ou inativo (sub=${payload.sub})`,
+      );
+      throw new UnauthorizedException('Acesso não autorizado');
+    }
+
+    request[REQUEST_TOKEN_PAYLOAD_NAME] = payload;
 
     return true;
   }
 
-  extractTokenHeader(request: Request) {
-    const authorization = request.headers?.authorization;
+  private extractTokenHeader(request: Request): string | undefined {
+    const [type, token] = request.headers.authorization?.split(' ') ?? [];
 
-    if (!authorization || typeof authorization !== 'string') {
-      return;
-    }
-
-    return authorization.split(' ')[1];
+    return type === 'Bearer' ? token : undefined;
   }
 }
