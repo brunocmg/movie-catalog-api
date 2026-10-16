@@ -15,8 +15,6 @@ export class AuthAdminGuard implements CanActivate {
   ): boolean | Promise<boolean> | Observable<boolean> {
     const request = context.switchToHttp().getRequest<RequestWithUser>();
 
-    console.log(request.user);
-
     if (request.user?.role === 'admin') return true;
 
     return false;
