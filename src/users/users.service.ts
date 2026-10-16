@@ -247,7 +247,9 @@ export class UsersService {
 
       const fileName = `${tokenPayload.sub}.${fileExtension}`;
 
-      const fileLocale = path.resolve(process.cwd(), 'files', fileName);
+      const uploadDir = path.resolve(process.cwd(), 'files');
+      await fs.mkdir(uploadDir, { recursive: true });
+      const fileLocale = path.join(uploadDir, fileName);
 
       await fs.writeFile(fileLocale, file.buffer);
 
@@ -295,7 +297,11 @@ export class UsersService {
         ...updatedUser,
         watchedMovies: movieNames,
       };
-    } catch {
+    } catch (err) {
+      this.logger.error(
+        'Falha ao atualizar o avatar do usuário',
+        err instanceof Error ? err.stack : String(err),
+      );
       throw new HttpException(
         'Falha ao atualizar o avatar do usuário!',
         HttpStatus.BAD_REQUEST,

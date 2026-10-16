@@ -17,9 +17,11 @@ type UploadedAvatarFile = {
 
 jest.mock('node:fs/promises', () => ({
   writeFile: jest.fn(),
+  mkdir: jest.fn(),
 }));
 
 const writeFileMock = jest.mocked(fs.writeFile);
+const mkdirMock = jest.mocked(fs.mkdir);
 
 const prismaMock = {
   user: {
@@ -39,7 +41,6 @@ const userSelect = {
   watchedMovies: { select: { movie: { select: { name: true } } } },
 };
 
-// o que o Prisma devolve com o select acima
 const userFromDb = {
   id: 1,
   name: 'Bruno',
@@ -47,7 +48,6 @@ const userFromDb = {
   watchedMovies: [{ movie: { name: 'Fight Club' } }],
 };
 
-// o que o service devolve (filmes mapeados para nomes)
 const userResponse = {
   id: 1,
   name: 'Bruno',
@@ -79,6 +79,7 @@ describe('UsersService', () => {
 
   beforeEach(async () => {
     jest.resetAllMocks();
+    mkdirMock.mockResolvedValue(undefined);
     writeFileMock.mockResolvedValue(undefined);
     loggerErrorSpy = jest
       .spyOn(Logger.prototype, 'error')
@@ -167,8 +168,6 @@ describe('UsersService', () => {
       HttpStatus.BAD_REQUEST,
     );
 
-    // Hoje o catch genérico do service troca "não existe" e "acesso negado"
-    // por esta mesma mensagem. Estes testes devem mudar quando isso for corrigido.
     it('should fail when user is not found', async () => {
       prismaMock.user.findFirst.mockResolvedValue(null);
 
@@ -270,7 +269,7 @@ describe('UsersService', () => {
     it.each([
       ['image/png', 'avatar.png', '1.png'],
       ['image/jpeg', 'avatar.jpeg', '1.jpg'],
-      ['image/png', 'evil.html', '1.png'], // a extensão vem do mimetype, não do nome
+      ['image/png', 'evil.html', '1.png'],
     ])(
       'should save mimetype %s (original name %s) as %s',
       async (mimetype, originalname, expectedFileName) => {
