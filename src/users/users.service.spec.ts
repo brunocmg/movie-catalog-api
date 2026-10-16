@@ -1,14 +1,13 @@
-/* eslint-disable @typescript-eslint/unbound-method */
-import { HashingServiceProtocol } from '../auth/hash/hashing.service';
-import { UsersService } from './users.service';
 import { Test, TestingModule } from '@nestjs/testing';
-import { PrismaService } from '../prisma/prisma.service';
-import { CreateUserDto } from './dto/create-user.dto';
-import { HttpException, HttpStatus } from '@nestjs/common';
-import { UpdateUserDto } from './dto/update-user.dto';
-import { PayloadTokenDto } from '../auth/dto/payload-token.dto';
+import { HttpException, HttpStatus, Logger } from '@nestjs/common';
 import * as path from 'node:path';
 import * as fs from 'node:fs/promises';
+import { UsersService } from './users.service';
+import { PrismaService } from '../prisma/prisma.service';
+import { HashingServiceProtocol } from '../auth/hash/hashing.service';
+import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
+import { PayloadTokenDto } from '../auth/dto/payload-token.dto';
 
 type UploadedAvatarFile = {
   originalname: string;
@@ -22,90 +21,113 @@ jest.mock('node:fs/promises', () => ({
 
 const writeFileMock = jest.mocked(fs.writeFile);
 
+const prismaMock = {
+  user: {
+    create: jest.fn(),
+    findFirst: jest.fn(),
+    update: jest.fn(),
+    delete: jest.fn(),
+  },
+};
+
+const hashingMock = { hash: jest.fn() };
+
+const userSelect = {
+  id: true,
+  name: true,
+  email: true,
+  watchedMovies: { select: { movie: { select: { name: true } } } },
+};
+
+// o que o Prisma devolve com o select acima
+const userFromDb = {
+  id: 1,
+  name: 'Bruno',
+  email: 'bruno@teste.com',
+  watchedMovies: [{ movie: { name: 'Fight Club' } }],
+};
+
+// o que o service devolve (filmes mapeados para nomes)
+const userResponse = {
+  id: 1,
+  name: 'Bruno',
+  email: 'bruno@teste.com',
+  watchedMovies: ['Fight Club'],
+};
+
+const makeToken = (sub: number): PayloadTokenDto => ({
+  sub,
+  aud: '',
+  email: 'bruno@teste.com',
+  exp: 1,
+  iat: 1,
+  iss: '',
+});
+
+const buildFile = (
+  overrides: Partial<UploadedAvatarFile> = {},
+): UploadedAvatarFile => ({
+  originalname: 'avatar.png',
+  mimetype: 'image/png',
+  buffer: Buffer.from('mock'),
+  ...overrides,
+});
+
 describe('UsersService', () => {
   let userService: UsersService;
-  let prismaService: PrismaService;
-  let hashingService: HashingServiceProtocol;
+  let loggerErrorSpy: jest.SpyInstance;
 
   beforeEach(async () => {
+    jest.resetAllMocks();
+    writeFileMock.mockResolvedValue(undefined);
+    loggerErrorSpy = jest
+      .spyOn(Logger.prototype, 'error')
+      .mockImplementation(() => undefined);
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         UsersService,
-        {
-          provide: PrismaService,
-          useValue: {
-            user: {
-              create: jest.fn().mockResolvedValue({
-                id: 1,
-                name: 'Bruno',
-                email: 'bruno@teste.com',
-                avatar: null,
-                createAt: new Date(),
-              }),
-              findFirst: jest.fn(),
-              update: jest.fn(),
-              delete: jest.fn(),
-            },
-          },
-        },
-        {
-          provide: HashingServiceProtocol,
-          useValue: {
-            hash: jest.fn(),
-          },
-        },
+        { provide: PrismaService, useValue: prismaMock },
+        { provide: HashingServiceProtocol, useValue: hashingMock },
       ],
     }).compile();
 
     userService = module.get<UsersService>(UsersService);
-    prismaService = module.get<PrismaService>(PrismaService);
-    hashingService = module.get<HashingServiceProtocol>(HashingServiceProtocol);
   });
 
-  describe('Create User', () => {
-    it('should create a new user', async () => {
-      const createUserDto: CreateUserDto = {
-        email: 'bruno@teste.com',
-        name: 'Bruno',
-        password: '123123',
-      };
+  afterEach(() => {
+    loggerErrorSpy.mockRestore();
+  });
 
-      jest.spyOn(hashingService, 'hash').mockResolvedValue('HASH_MOCK_EXAMPLE');
+  describe('create', () => {
+    const createUserDto: CreateUserDto = {
+      email: 'bruno@teste.com',
+      name: 'Bruno',
+      password: '123123',
+    };
+
+    it('should hash the password and create the user', async () => {
+      hashingMock.hash.mockResolvedValue('HASH_MOCK_EXAMPLE');
+      prismaMock.user.create.mockResolvedValue(userFromDb);
 
       const result = await userService.create(createUserDto);
 
-      expect(hashingService.hash).toHaveBeenCalled();
-      expect(prismaService.user.create).toHaveBeenCalledWith({
+      expect(hashingMock.hash).toHaveBeenCalledWith(createUserDto.password);
+      expect(prismaMock.user.create).toHaveBeenCalledWith({
         data: {
           name: createUserDto.name,
           email: createUserDto.email,
           passwordHash: 'HASH_MOCK_EXAMPLE',
         },
-        select: {
-          id: true,
-          name: true,
-          email: true,
-        },
+        select: userSelect,
       });
-
-      expect(result).toMatchObject({
-        id: 1,
-        name: createUserDto.name,
-        email: createUserDto.email,
-      });
+      expect(result).toEqual(userResponse);
+      expect(result).not.toHaveProperty('passwordHash');
     });
 
-    it('should throw error if prisma create fails', async () => {
-      const createUserDto: CreateUserDto = {
-        email: 'bruno@teste.com',
-        name: 'Bruno',
-        password: '123123',
-      };
-
-      jest.spyOn(hashingService, 'hash').mockResolvedValue('HASH_MOCK_EXAMPLE');
-      jest
-        .spyOn(prismaService.user, 'create')
-        .mockRejectedValue(new Error('Database error'));
+    it('should throw when prisma create fails', async () => {
+      hashingMock.hash.mockResolvedValue('HASH_MOCK_EXAMPLE');
+      prismaMock.user.create.mockRejectedValue(new Error('Database error'));
 
       await expect(userService.create(createUserDto)).rejects.toThrow(
         new HttpException(
@@ -113,404 +135,194 @@ describe('UsersService', () => {
           HttpStatus.BAD_REQUEST,
         ),
       );
-
-      expect(hashingService.hash).toHaveBeenCalledWith(createUserDto.password);
-
-      expect(prismaService.user.create).toHaveBeenCalledWith({
-        data: {
-          name: createUserDto.name,
-          email: createUserDto.email,
-          passwordHash: 'HASH_MOCK_EXAMPLE',
-        },
-        select: {
-          id: true,
-          name: true,
-          email: true,
-        },
-      });
     });
   });
 
-  describe('Find One User', () => {
-    it('should return a user when found', async () => {
-      const mockUser = {
-        id: 1,
-        name: 'Bruno',
-        email: 'bruno@teste.com',
-        passwordHash: 'hash_exemplo',
-        active: true,
-        avatar: null,
-        createAt: new Date(),
-      };
-
-      jest.spyOn(prismaService.user, 'findFirst').mockResolvedValue(mockUser);
+  describe('findOne', () => {
+    it('should return the user with watched movie names', async () => {
+      prismaMock.user.findFirst.mockResolvedValue(userFromDb);
 
       const result = await userService.findOne(1);
 
-      expect(prismaService.user.findFirst).toHaveBeenCalledWith({
-        where: {
-          id: 1,
-        },
-        select: {
-          id: true,
-          name: true,
-          email: true,
-        },
+      expect(prismaMock.user.findFirst).toHaveBeenCalledWith({
+        where: { id: 1 },
+        select: userSelect,
       });
-
-      expect(result).toEqual(mockUser);
+      expect(result).toEqual(userResponse);
     });
 
-    it('should throw exception when user is not found', async () => {
-      jest.spyOn(prismaService.user, 'findFirst').mockResolvedValue(null);
+    it('should throw when user is not found', async () => {
+      prismaMock.user.findFirst.mockResolvedValue(null);
 
       await expect(userService.findOne(1)).rejects.toThrow(
         new HttpException('Usuário não encontrado!', HttpStatus.BAD_REQUEST),
       );
-
-      expect(prismaService.user.findFirst).toHaveBeenCalledWith({
-        where: { id: 1 },
-        select: {
-          id: true,
-          name: true,
-          email: true,
-        },
-      });
     });
   });
 
-  describe('Update User', () => {
-    it('should throw exception when user is not found', async () => {
-      const updateUserDto: UpdateUserDto = { name: 'Novo nome' };
-      const tokenPayload: PayloadTokenDto = {
-        sub: 1,
-        aud: '',
-        email: 'matheus@teste.com',
-        exp: 123,
-        iat: 123,
-        iss: '',
-      };
+  describe('update', () => {
+    const existingUser = { id: 1, name: 'Bruno', passwordHash: 'hash_exemplo' };
+    const updateFailure = new HttpException(
+      'Falha ao atualizar usuário!',
+      HttpStatus.BAD_REQUEST,
+    );
 
-      jest.spyOn(prismaService.user, 'findFirst').mockResolvedValue(null);
+    // Hoje o catch genérico do service troca "não existe" e "acesso negado"
+    // por esta mesma mensagem. Estes testes devem mudar quando isso for corrigido.
+    it('should fail when user is not found', async () => {
+      prismaMock.user.findFirst.mockResolvedValue(null);
 
       await expect(
-        userService.update(1, updateUserDto, tokenPayload),
-      ).rejects.toThrow(
-        new HttpException(
-          'Falha ao atualizar usuário!',
-          HttpStatus.BAD_REQUEST,
-        ),
-      );
+        userService.update(1, { name: 'Novo nome' }, makeToken(1)),
+      ).rejects.toThrow(updateFailure);
+      expect(prismaMock.user.update).not.toHaveBeenCalled();
     });
 
-    it('should throw UNAUTHORIZED exception when user is not authorized', async () => {
-      const updateUserDto: UpdateUserDto = { name: 'Novo nome' };
-      const tokenPayload: PayloadTokenDto = {
-        sub: 5,
-        aud: '',
-        email: 'matheus@teste.com',
-        exp: 123,
-        iat: 123,
-        iss: '',
-      };
-
-      const mockUser = {
-        id: 1,
-        name: 'Matheus',
-        email: 'matheus@teste.com',
-        passwordHash: 'hash_exemplo',
-        active: true,
-        avatar: null,
-        createAt: new Date(),
-      };
-
-      jest.spyOn(prismaService.user, 'findFirst').mockResolvedValue(mockUser);
+    it('should fail when the token belongs to another user', async () => {
+      prismaMock.user.findFirst.mockResolvedValue(existingUser);
 
       await expect(
-        userService.update(1, updateUserDto, tokenPayload),
-      ).rejects.toThrow(
-        new HttpException(
-          'Falha ao atualizar usuário!',
-          HttpStatus.BAD_REQUEST,
-        ),
-      );
+        userService.update(1, { name: 'Novo nome' }, makeToken(5)),
+      ).rejects.toThrow(updateFailure);
+      expect(hashingMock.hash).not.toHaveBeenCalled();
+      expect(prismaMock.user.update).not.toHaveBeenCalled();
     });
 
-    it('should user updated', async () => {
+    it('should update name and password', async () => {
       const updateUserDto: UpdateUserDto = {
         name: 'Novo nome',
         password: 'Nova senha',
       };
-      const tokenPayload: PayloadTokenDto = {
-        sub: 1,
-        aud: '',
-        email: 'bruno@teste.com',
-        exp: 123,
-        iat: 123,
-        iss: '',
-      };
-
-      const mockUser = {
-        id: 1,
-        name: 'Bruno',
-        email: 'bruno@teste.com',
-        passwordHash: 'hash_exemplo',
-        active: true,
-        avatar: null,
-        createAt: new Date(),
-      };
-
-      const updatedUser = {
-        id: 1,
+      prismaMock.user.findFirst.mockResolvedValue(existingUser);
+      hashingMock.hash.mockResolvedValue('novo_hash_exemplo');
+      prismaMock.user.update.mockResolvedValue({
+        ...userFromDb,
         name: 'Novo nome',
-        email: 'bruno@teste.com',
-        passwordHash: 'novo_hash_exemplo',
-        active: true,
-        avatar: null,
-        createAt: new Date(),
-      };
-
-      jest.spyOn(prismaService.user, 'findFirst').mockResolvedValue(mockUser);
-      jest.spyOn(hashingService, 'hash').mockResolvedValue('novo_hash_exemplo');
-      jest.spyOn(prismaService.user, 'update').mockResolvedValue(updatedUser);
-
-      const result = await userService.update(1, updateUserDto, tokenPayload);
-
-      expect(hashingService.hash).toHaveBeenCalledWith(updateUserDto.password);
-
-      expect(prismaService.user.update).toHaveBeenCalledWith({
-        where: {
-          id: 1,
-        },
-        data: {
-          name: updateUserDto.name,
-          passwordHash: 'novo_hash_exemplo',
-        },
-        select: {
-          id: true,
-          name: true,
-          email: true,
-        },
       });
 
-      expect(result).toEqual(updatedUser);
-    });
-  });
+      const result = await userService.update(1, updateUserDto, makeToken(1));
 
-  describe('Delete User', () => {
-    it('should throw error when user is not found', async () => {
-      const tokenPayload: PayloadTokenDto = {
-        sub: 1,
-        aud: '',
-        email: 'matheus@teste.com',
-        exp: 123,
-        iat: 123,
-        iss: '',
-      };
-
-      jest.spyOn(prismaService.user, 'findFirst').mockResolvedValue(null);
-
-      await expect(userService.delete(1, tokenPayload)).rejects.toThrow(
-        new HttpException('Falha ao deletar usuário!', HttpStatus.BAD_REQUEST),
-      );
-    });
-
-    it('should throw UNAUTHORIZED when user is not authorized', async () => {
-      const tokenPayload: PayloadTokenDto = {
-        sub: 5,
-        aud: '',
-        email: 'matheus@teste.com',
-        exp: 123,
-        iat: 123,
-        iss: '',
-      };
-
-      const mockUser = {
-        id: 1,
-        name: 'Matheus',
-        email: 'matheus@teste.com',
-        passwordHash: 'hash_exemplo',
-        active: true,
-        avatar: null,
-        createAt: new Date(),
-      };
-
-      jest.spyOn(prismaService.user, 'findFirst').mockResolvedValue(mockUser);
-
-      await expect(userService.delete(1, tokenPayload)).rejects.toThrow(
-        new HttpException('Falha ao deletar usuário!', HttpStatus.BAD_REQUEST),
-      );
-
-      expect(prismaService.user.delete).not.toHaveBeenCalled();
-    });
-
-    it('should delete user', async () => {
-      const tokenPayload: PayloadTokenDto = {
-        sub: 1,
-        aud: '',
-        email: 'matheus@teste.com',
-        exp: 123,
-        iat: 123,
-        iss: '',
-      };
-
-      const mockUser = {
-        id: 1,
-        name: 'Matheus',
-        email: 'matheus@teste.com',
-        passwordHash: 'hash_exemplo',
-        active: true,
-        avatar: null,
-        createAt: new Date(),
-      };
-
-      jest.spyOn(prismaService.user, 'findFirst').mockResolvedValue(mockUser);
-      jest.spyOn(prismaService.user, 'delete').mockResolvedValue(mockUser);
-
-      const result = await userService.delete(1, tokenPayload);
-
-      expect(prismaService.user.delete).toHaveBeenCalledWith({
-        where: {
-          id: mockUser.id,
-        },
+      expect(hashingMock.hash).toHaveBeenCalledWith(updateUserDto.password);
+      expect(prismaMock.user.update).toHaveBeenCalledWith({
+        where: { id: 1 },
+        data: { name: 'Novo nome', passwordHash: 'novo_hash_exemplo' },
+        select: userSelect,
       });
+      expect(result).toEqual({ ...userResponse, name: 'Novo nome' });
+    });
 
-      expect(result).toEqual({
-        message: 'Usuário foi deletado com sucesso!',
+    it('should keep the current password hash when no password is sent', async () => {
+      prismaMock.user.findFirst.mockResolvedValue(existingUser);
+      prismaMock.user.update.mockResolvedValue(userFromDb);
+
+      await userService.update(1, { name: 'Novo nome' }, makeToken(1));
+
+      expect(hashingMock.hash).not.toHaveBeenCalled();
+      expect(prismaMock.user.update).toHaveBeenCalledWith({
+        where: { id: 1 },
+        data: { name: 'Novo nome', passwordHash: 'hash_exemplo' },
+        select: userSelect,
       });
     });
   });
 
-  describe('Upload Avatar User', () => {
-    it('should throw NOT_FOUND when user is not found', async () => {
-      const tokenPayload: PayloadTokenDto = {
-        sub: 1,
-        aud: '',
-        email: 'matheus@teste.com',
-        exp: 123,
-        iat: 123,
-        iss: '',
-      };
+  describe('delete', () => {
+    const deleteFailure = new HttpException(
+      'Falha ao deletar usuário!',
+      HttpStatus.BAD_REQUEST,
+    );
 
-      const file: UploadedAvatarFile = {
-        originalname: 'avatar.png',
-        mimetype: 'image/png',
-        buffer: Buffer.from(''),
-      };
+    it('should fail when user is not found', async () => {
+      prismaMock.user.findFirst.mockResolvedValue(null);
 
-      jest.spyOn(prismaService.user, 'findFirst').mockResolvedValue(null);
+      await expect(userService.delete(1, makeToken(1))).rejects.toThrow(
+        deleteFailure,
+      );
+      expect(prismaMock.user.delete).not.toHaveBeenCalled();
+    });
+
+    it('should fail when the token belongs to another user', async () => {
+      prismaMock.user.findFirst.mockResolvedValue({ id: 1 });
+
+      await expect(userService.delete(1, makeToken(5))).rejects.toThrow(
+        deleteFailure,
+      );
+      expect(prismaMock.user.delete).not.toHaveBeenCalled();
+    });
+
+    it('should delete the user', async () => {
+      prismaMock.user.findFirst.mockResolvedValue({ id: 1 });
+      prismaMock.user.delete.mockResolvedValue({ id: 1 });
+
+      const result = await userService.delete(1, makeToken(1));
+
+      expect(prismaMock.user.delete).toHaveBeenCalledWith({ where: { id: 1 } });
+      expect(result).toEqual({ message: 'Usuário foi deletado com sucesso!' });
+    });
+  });
+
+  describe('uploadAvatarImage', () => {
+    const avatarFailure = new HttpException(
+      'Falha ao atualizar o avatar do usuário!',
+      HttpStatus.BAD_REQUEST,
+    );
+
+    it.each([
+      ['image/png', 'avatar.png', '1.png'],
+      ['image/jpeg', 'avatar.jpeg', '1.jpg'],
+      ['image/png', 'evil.html', '1.png'], // a extensão vem do mimetype, não do nome
+    ])(
+      'should save mimetype %s (original name %s) as %s',
+      async (mimetype, originalname, expectedFileName) => {
+        const file = buildFile({ mimetype, originalname });
+        prismaMock.user.findFirst.mockResolvedValue({ id: 1 });
+        prismaMock.user.update.mockResolvedValue({
+          ...userFromDb,
+          avatar: expectedFileName,
+        });
+
+        const result = await userService.uploadAvatarImage(makeToken(1), file);
+
+        expect(writeFileMock).toHaveBeenCalledWith(
+          path.resolve(process.cwd(), 'files', expectedFileName),
+          file.buffer,
+        );
+        expect(prismaMock.user.update).toHaveBeenCalledWith({
+          where: { id: 1 },
+          data: { avatar: expectedFileName },
+          select: { ...userSelect, avatar: true },
+        });
+        expect(result).toEqual({ ...userResponse, avatar: expectedFileName });
+      },
+    );
+
+    it('should reject unsupported mimetypes without writing the file', async () => {
+      const file = buildFile({ mimetype: 'text/html' });
 
       await expect(
-        userService.uploadAvatarImage(tokenPayload, file),
-      ).rejects.toThrow(
-        new HttpException(
-          'Falha ao atualizar o avatar do usuário!',
-          HttpStatus.BAD_REQUEST,
-        ),
-      );
+        userService.uploadAvatarImage(makeToken(1), file),
+      ).rejects.toBeInstanceOf(HttpException);
+      expect(writeFileMock).not.toHaveBeenCalled();
+      expect(prismaMock.user.update).not.toHaveBeenCalled();
     });
 
-    it('should upload avatar and update user sucessfully', async () => {
-      const tokenPayload: PayloadTokenDto = {
-        sub: 1,
-        aud: '',
-        email: 'matheus@teste.com',
-        exp: 123,
-        iat: 123,
-        iss: '',
-      };
+    it('should fail when user is not found', async () => {
+      prismaMock.user.findFirst.mockResolvedValue(null);
 
-      const file: UploadedAvatarFile = {
-        originalname: 'avatar.png',
-        mimetype: 'image/png',
-        buffer: Buffer.from(''),
-      };
-
-      const mockUser = {
-        id: 1,
-        name: 'Bruno',
-        email: 'bruno@teste.com',
-        passwordHash: 'hash_exemplo',
-        active: true,
-        avatar: null,
-        createAt: new Date(),
-      };
-
-      const updatedUser = {
-        id: 1,
-        name: 'Bruno',
-        email: 'bruno@teste.com',
-        passwordHash: 'hash_exemplo',
-        active: true,
-        avatar: '1.png',
-        createAt: new Date(),
-      };
-
-      jest.spyOn(prismaService.user, 'findFirst').mockResolvedValue(mockUser);
-      jest.spyOn(prismaService.user, 'update').mockResolvedValue(updatedUser);
-      writeFileMock.mockResolvedValue(undefined);
-
-      const result = await userService.uploadAvatarImage(tokenPayload, file);
-
-      const fileLocale = path.resolve(process.cwd(), 'files', '1.png');
-
-      expect(writeFileMock).toHaveBeenCalledWith(fileLocale, file.buffer);
-      expect(prismaService.user.update).toHaveBeenCalledWith({
-        where: {
-          id: mockUser.id,
-        },
-        data: {
-          avatar: '1.png',
-        },
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          avatar: true,
-        },
-      });
-
-      expect(result).toEqual(updatedUser);
+      await expect(
+        userService.uploadAvatarImage(makeToken(1), buildFile()),
+      ).rejects.toThrow(avatarFailure);
+      expect(prismaMock.user.update).not.toHaveBeenCalled();
     });
 
-    it('should throw error if file write fails', async () => {
-      const tokenPayload: PayloadTokenDto = {
-        sub: 1,
-        aud: '',
-        email: 'bruno@teste.com',
-        exp: 123,
-        iat: 123,
-        iss: '',
-      };
-
-      const file: UploadedAvatarFile = {
-        originalname: 'avatar.png',
-        mimetype: 'image/png',
-        buffer: Buffer.from(''),
-      };
-
-      const mockUser = {
-        id: 1,
-        name: 'Bruno',
-        email: 'bruno@teste.com',
-        passwordHash: 'hash_exemplo',
-        active: true,
-        avatar: null,
-        createAt: new Date(),
-      };
-
-      jest.spyOn(prismaService.user, 'findFirst').mockResolvedValue(mockUser);
-
+    it('should fail when writing the file fails', async () => {
+      prismaMock.user.findFirst.mockResolvedValue({ id: 1 });
       writeFileMock.mockRejectedValue(new Error('Fail write error'));
 
       await expect(
-        userService.uploadAvatarImage(tokenPayload, file),
-      ).rejects.toThrow(
-        new HttpException(
-          'Falha ao atualizar o avatar do usuário!',
-          HttpStatus.BAD_REQUEST,
-        ),
-      );
+        userService.uploadAvatarImage(makeToken(1), buildFile()),
+      ).rejects.toThrow(avatarFailure);
+      expect(prismaMock.user.update).not.toHaveBeenCalled();
     });
   });
 });
