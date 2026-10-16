@@ -1,4 +1,10 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  HttpException,
+  HttpStatus,
+  Injectable,
+  Logger,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -25,6 +31,8 @@ type MovieName = {
 
 @Injectable()
 export class UsersService {
+  private readonly logger = new Logger(UsersService.name);
+
   constructor(
     private prisma: PrismaService,
     private readonly hashingService: HashingServiceProtocol,
@@ -100,7 +108,10 @@ export class UsersService {
         watchedMovies: movieNames,
       };
     } catch (err) {
-      console.log(err);
+      this.logger.error(
+        'Falha ao cadastrar usuário!',
+        err instanceof Error ? err.stack : String(err),
+      );
       throw new HttpException(
         'Falha ao cadastrar usuário!',
         HttpStatus.BAD_REQUEST,
@@ -113,7 +124,6 @@ export class UsersService {
     updateUserDto: UpdateUserDto,
     tokenPayload: PayloadTokenDto,
   ): Promise<ResponseUserDto> {
-    console.log(tokenPayload);
     try {
       const user = await this.prisma.user.findFirst({
         where: {
@@ -174,7 +184,10 @@ export class UsersService {
         watchedMovies: movieNames,
       };
     } catch (err) {
-      console.log(err);
+      this.logger.error(
+        'Falha ao atualizar usuário!',
+        err instanceof Error ? err.stack : String(err),
+      );
       throw new HttpException(
         'Falha ao atualizar usuário!',
         HttpStatus.BAD_REQUEST,
@@ -208,7 +221,10 @@ export class UsersService {
         message: 'Usuário foi deletado com sucesso!',
       };
     } catch (err) {
-      console.log(err);
+      this.logger.error(
+        'Falha ao deletar usuário!',
+        err instanceof Error ? err.stack : String(err),
+      );
       throw new HttpException(
         'Falha ao deletar usuário!',
         HttpStatus.BAD_REQUEST,
@@ -221,10 +237,13 @@ export class UsersService {
     file: UploadedAvatarFile,
   ): Promise<ResponseUpdateAvatarDto> {
     try {
-      const fileExtension = path
-        .extname(file.originalname)
-        .toLowerCase()
-        .substring(1);
+      const EXTENSION_BY_MIMETYPE: Record<string, string> = {
+        'image/jpeg': 'jpg',
+        'image/png': 'png',
+      };
+      const fileExtension = EXTENSION_BY_MIMETYPE[file.mimetype];
+      if (!fileExtension)
+        throw new BadRequestException('Tipo de arquivo inválido');
 
       const fileName = `${tokenPayload.sub}.${fileExtension}`;
 
