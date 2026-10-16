@@ -29,6 +29,7 @@ import {
   ApiOperation,
   ApiUnauthorizedResponse,
   ApiUnprocessableEntityResponse,
+  ApiPayloadTooLargeResponse,
 } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import {
@@ -85,7 +86,6 @@ export class UsersController {
     @Body() updateUserDto: UpdateUserDto,
     @TokenPayloadParam() tokenPayload: PayloadTokenDto,
   ) {
-    console.log('Payload recebido: ', tokenPayload);
     return this.userService.update(id, updateUserDto, tokenPayload);
   }
 
@@ -133,14 +133,17 @@ export class UsersController {
   @ApiUnprocessableEntityResponse({
     description: 'Invalid file type or file too large',
   })
-  @UseInterceptors(FileInterceptor('file'))
+  @ApiPayloadTooLargeResponse()
+  @UseInterceptors(
+    FileInterceptor('file', { limits: { fileSize: 3 * 1024 * 1024 } }),
+  )
   @Post('upload')
   async uploadAvatar(
     @TokenPayloadParam() tokenPayload: PayloadTokenDto,
     @UploadedFile(
       new ParseFilePipeBuilder()
         .addFileTypeValidator({
-          fileType: /jpeg|jpg|png/g,
+          fileType: /^image\/(jpeg|png)$/,
         })
         .addMaxSizeValidator({
           maxSize: 3 * (1024 * 1024),
