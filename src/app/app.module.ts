@@ -6,6 +6,8 @@ import { ConfigModule } from '@nestjs/config';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
 import { HealthModule } from '../health/health.module';
+import { LoggerInterceptor } from '../common/interceptors/logger.interceptor';
+import { APP_INTERCEPTOR } from '@nestjs/core';
 
 @Module({
   imports: [
@@ -23,5 +25,6 @@ import { HealthModule } from '../health/health.module';
       serveRoot: '/files',
     }),
   ],
+  providers: [{ provide: APP_INTERCEPTOR, useClass: LoggerInterceptor }],
 })
 export class AppModule {}
