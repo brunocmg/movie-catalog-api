@@ -4,6 +4,7 @@ import {
   ArgumentsHost,
   HttpException,
   HttpStatus,
+  Logger,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 
@@ -19,6 +20,8 @@ type HttpErrorResponse = {
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
+  private readonly logger = new Logger(AllExceptionsFilter.name);
+
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
@@ -31,21 +34,28 @@ export class AllExceptionsFilter implements ExceptionFilter {
       status = exception.getStatus();
       const res = exception.getResponse();
       message = this.getHttpExceptionMessage(res);
-    } else if (this.isPrismaKnownRequestError(exception)) {
-      const prismaError = exception;
-      const code = prismaError.code;
-      switch (code) {
-        case 'P2025':
-          status = HttpStatus.NOT_FOUND;
-          message = 'Resource not found';
-          break;
-        case 'P2002':
-          status = HttpStatus.CONFLICT;
-          message = 'Unique constraint failed';
-          break;
-        default:
-          status = HttpStatus.BAD_REQUEST;
-          message = prismaError.message ?? 'Database error';
+    } else {
+      this.logger.error(
+        `${request.method} ${request.url}`,
+        exception instanceof Error ? exception.stack : String(exception),
+      );
+
+      if (this.isPrismaKnownRequestError(exception)) {
+        const prismaError = exception;
+        const code = prismaError.code;
+        switch (code) {
+          case 'P2025':
+            status = HttpStatus.NOT_FOUND;
+            message = 'Resource not found';
+            break;
+          case 'P2002':
+            status = HttpStatus.CONFLICT;
+            message = 'Unique constraint failed';
+            break;
+          default:
+            status = HttpStatus.BAD_REQUEST;
+            message = prismaError.message ?? 'Database error';
+        }
       }
     }
 
