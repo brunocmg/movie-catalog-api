@@ -32,7 +32,10 @@ export class MoviesService {
       });
       return newMovie;
     } catch (err) {
-      this.logger.warn('Falha ao validar token');
+      this.logger.error(
+        'Falha ao cadastrar filme',
+        err instanceof Error ? err.stack : String(err),
+      );
       if (this.isPrismaKnownRequestError(err)) throw err;
       throw new InternalServerErrorException('Movie registration failed.');
     }
@@ -60,7 +63,10 @@ export class MoviesService {
         },
       };
     } catch (err) {
-      console.error(err);
+      this.logger.error(
+        'Falha ao buscar filmes',
+        err instanceof Error ? err.stack : String(err),
+      );
       throw new InternalServerErrorException('Failed to find movies.');
     }
   }
@@ -103,10 +109,7 @@ export class MoviesService {
         err instanceof Prisma.PrismaClientKnownRequestError &&
         err.code === 'P2025'
       ) {
-        new Prisma.PrismaClientKnownRequestError('not found', {
-          code: 'P2025',
-          clientVersion: 'test',
-        });
+        throw new NotFoundException('Movie not found.');
       }
       throw err;
     }
