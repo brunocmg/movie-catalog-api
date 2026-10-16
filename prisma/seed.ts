@@ -2,107 +2,82 @@ import 'dotenv/config';
 import { Pool } from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '.prisma/client';
+import * as bcrypt from 'bcryptjs';
 
 const connectionString = `${process.env.DATABASE_URL}`;
 const pool = new Pool({ connectionString });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
-const movieIds = {
-  twenty_one: 1,
-  the_godfather: 2,
-  the_dark_knight: 3,
-  forrest_gump: 4,
-  fight_club: 5,
-};
+const moviesSeed = {
+  twenty_one: { name: '21', year: 2008 },
+  the_godfather: { name: 'The Godfather', year: 1972 },
+  the_dark_knight: { name: 'The Dark Knight', year: 2008 },
+  forrest_gump: { name: 'Forrest Gump', year: 1994 },
+  fight_club: { name: 'Fight Club', year: 1999 },
+} as const;
 
-const usersSeed = [
+type MovieKey = keyof typeof moviesSeed;
+
+const usersSeed: {
+  email: string;
+  name: string;
+  password: string;
+  movies: MovieKey[];
+}[] = [
   {
     email: 'joao@email.com',
     name: 'Joao',
-    passwordHash: '12345',
-    movieIds: [movieIds.twenty_one, movieIds.fight_club],
+    password: '123456',
+    movies: ['twenty_one', 'fight_club'],
   },
   {
     email: 'maria@email.com',
     name: 'Maria',
-    passwordHash: '12345',
-    movieIds: [movieIds.the_godfather, movieIds.forrest_gump],
+    password: '123456',
+    movies: ['the_godfather', 'forrest_gump'],
   },
 ];
 
+async function ensureMovie(data: { name: string; year: number }) {
+  const existing = await prisma.movie.findFirst({ where: data });
+  return existing ?? (await prisma.movie.create({ data }));
+}
+
 async function main() {
-  const twenty_one = await prisma.movie.upsert({
-    where: { id: movieIds.twenty_one },
-    update: {},
-    create: {
-      name: '21',
-      year: 2008,
-    },
-  });
-  const the_godfather = await prisma.movie.upsert({
-    where: { id: movieIds.the_godfather },
-    update: {},
-    create: {
-      name: 'The Godfather',
-      year: 1972,
-    },
-  });
-  const the_dark_knight = await prisma.movie.upsert({
-    where: { id: movieIds.the_dark_knight },
-    update: {},
-    create: {
-      name: 'The Dark Knight',
-      year: 2008,
-    },
-  });
-  const forrest_gump = await prisma.movie.upsert({
-    where: { id: movieIds.forrest_gump },
-    update: {},
-    create: {
-      name: 'Forrest Gump',
-      year: 1994,
-    },
-  });
-  const fight_club = await prisma.movie.upsert({
-    where: { id: movieIds.fight_club },
-    update: {},
-    create: {
-      name: 'Fight Club',
-      year: 1999,
-    },
-  });
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('Seed de desenvolvimento: não rode em produção.');
+  }
+
+  const movieIds = {} as Record<MovieKey, number>;
+  for (const key of Object.keys(moviesSeed) as MovieKey[]) {
+    const movie = await ensureMovie(moviesSeed[key]);
+    movieIds[key] = movie.id;
+  }
+
   for (const u of usersSeed) {
+    const passwordHash = await bcrypt.hash(u.password, 10);
+
     const user = await prisma.user.upsert({
       where: { email: u.email },
-      update: {},
-      create: {
-        email: u.email,
-        name: u.name,
-        passwordHash: u.passwordHash,
-      },
+      update: { passwordHash }, // corrige os usuários antigos com senha em texto puro
+      create: { email: u.email, name: u.name, passwordHash },
     });
 
-    for (const movieId of u.movieIds) {
-      await pool.query(
-        `
-          INSERT INTO watched_movies (user_id, movie_id)
-          VALUES ($1, $2)
-          ON CONFLICT (user_id, movie_id) DO NOTHING
-        `,
-        [user.id, movieId],
-      );
+    for (const key of u.movies) {
+      await prisma.watchedMovie.upsert({
+        where: {
+          userId_movieId: { userId: user.id, movieId: movieIds[key] },
+        },
+        update: {},
+        create: { userId: user.id, movieId: movieIds[key] },
+      });
     }
   }
 
-  console.log({
-    twenty_one,
-    the_godfather,
-    the_dark_knight,
-    forrest_gump,
-    fight_club,
-  });
+  console.log('Seed concluído');
 }
+
 main()
   .then(async () => {
     await prisma.$disconnect();
