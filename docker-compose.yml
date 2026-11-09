@@ -9,9 +9,16 @@ services:
       - '5432:5432'
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${DB_USER} -d ${DB_NAME}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   app:
-    build: .
+    build:
+      context: .
+      target: dev
     ports:
       - '3000:3000'
     env_file:
@@ -21,11 +28,11 @@ services:
       NODE_ENV: development
     depends_on:
       db:
-        condition: service_started
+        condition: service_healthy
     volumes:
       - .:/app
       - /app/node_modules
-    command: sh -c "npx prisma generate && npm run start:dev"
+    command: sh -c "npx prisma generate && npx prisma migrate deploy && npm run start:dev"
 
 volumes:
   pgdata:

@@ -5,12 +5,8 @@ import { App } from 'supertest/types';
 import { MoviesModule } from '../src/movies/movies.module';
 import { UsersModule } from '../src/users/users.module';
 import { AuthModule } from '../src/auth/auth.module';
-import * as dotenv from 'dotenv';
 import { PrismaService } from '../src/prisma/prisma.service';
-import { execSync } from 'child_process';
 import { ConfigModule } from '@nestjs/config';
-
-dotenv.config({ path: '.env.test' });
 
 interface UserBody {
   id: string;
@@ -52,15 +48,9 @@ describe('Users (e2e)', () => {
   };
 
   beforeEach(async () => {
-    execSync(
-      'cross-env DATABASE_URL=postgresql://postgres:12345@localhost:5432/catalog npx prisma migrate reset --force',
-    );
-
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [
-        ConfigModule.forRoot({
-          envFilePath: '.env.test',
-        }),
+        ConfigModule.forRoot({ ignoreEnvFile: true }),
         MoviesModule,
         UsersModule,
         AuthModule,
@@ -78,10 +68,10 @@ describe('Users (e2e)', () => {
     prismaService = moduleFixture.get<PrismaService>(PrismaService);
 
     await app.init();
+    await prismaService.user.deleteMany();
   });
 
   afterEach(async () => {
-    await prismaService.user.deleteMany();
     await app.close();
   });
 
@@ -104,6 +94,7 @@ describe('Users (e2e)', () => {
         id: body.id,
         name: 'Bruno Gomes',
         email: 'bruno@teste.com',
+        watchedMovies: [],
       });
     });
 
@@ -145,6 +136,7 @@ describe('Users (e2e)', () => {
         id: auth.id,
         name: updateUserDto.name,
         email: createUserDto.email,
+        watchedMovies: [],
       });
     });
 

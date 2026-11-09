@@ -5,6 +5,9 @@
     "test",
     "dist",
     "**/*spec.ts",
-    "express-legacy/**/*"
+    "express-legacy/**/*",
+    "prisma",
+    "prisma.config.ts",
+    "coverage"
   ]
 }
