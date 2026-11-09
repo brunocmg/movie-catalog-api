@@ -39,9 +39,12 @@ const usersSeed: {
   },
 ];
 
-async function ensureMovie(data: { name: string; year: number }) {
-  const existing = await prisma.movie.findFirst({ where: data });
-  return existing ?? (await prisma.movie.create({ data }));
+function ensureMovie(data: { name: string; year: number }) {
+  return prisma.movie.upsert({
+    where: { name_year: data },
+    update: {},
+    create: data,
+  });
 }
 
 async function main() {

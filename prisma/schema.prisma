@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
   output   = "../node_modules/.prisma/client"
@@ -14,26 +8,31 @@ datasource db {
 }
 
 model Movie {
-  id          Int @id @default(autoincrement())
-  name        String
-  genre       String?
-  director    String? 
-  year        Int
+  id        Int      @id @default(autoincrement())
+  name      String
+  genre     String?
+  director  String?
+  year      Int
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
-  watchedBy   WatchedMovie[]
+  watchedBy WatchedMovie[]
 
+  @@unique([name, year])
+  @@index([year])
   @@map("movies")
 }
 
 model User {
-  id Int @id @default(autoincrement())
-  name String
-  email String @unique
-  passwordHash String
-  active Boolean @default(true)
-  avatar String?
-
-  createAt DateTime? @default(now())
+  id           Int      @id @default(autoincrement())
+  name         String
+  /// Always stored lower-cased (normalized in the DTOs).
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  active       Boolean  @default(true)
+  avatar       String?
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
 
   watchedMovies WatchedMovie[]
 
@@ -49,5 +48,6 @@ model WatchedMovie {
   movie Movie @relation(fields: [movieId], references: [id], onDelete: Cascade)
 
   @@id([userId, movieId])
+  @@index([movieId])
   @@map("watched_movies")
 }

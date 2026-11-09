@@ -1,7 +1,6 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
-import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { AppModule } from './app/app.module';
+import { setupApp } from './app/app.setup';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
 async function bootstrap() {
@@ -12,15 +11,7 @@ async function bootstrap() {
     origin: '*',
   });
 
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-      forbidNonWhitelisted: true,
-      transform: true,
-    }),
-  );
-
-  app.useGlobalFilters(new AllExceptionsFilter());
+  setupApp(app);
 
   const configSwagger = new DocumentBuilder()
     .setTitle('Movies List')

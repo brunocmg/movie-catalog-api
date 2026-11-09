@@ -2,7 +2,7 @@
 
 A RESTful API for managing a movie catalog and its users, built with NestJS and TypeScript. Users can register, authenticate, browse movies and track which ones they've watched.
 
-[![CI](https://github.com/brunocmg/api-rest-filmes/actions/workflows/ci.yml/badge.svg?branch=develop)](https://github.com/brunocmg/api-rest-filmes/actions/workflows/ci.yml)
+[![CI](https://github.com/brunocmg/movie-catalog-api/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/brunocmg/movie-catalog-api/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![NestJS](https://img.shields.io/badge/NestJS-E0234E?style=flat&logo=nestjs&logoColor=white)](https://nestjs.com/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
@@ -29,9 +29,11 @@ A RESTful API for managing a movie catalog and its users, built with NestJS and 
 
 ## ✨ Features
 
-- ✅ CRUD for movies with pagination
+- ✅ CRUD for movies with pagination (unique per name + year)
 - ✅ User registration, update, deletion and avatar upload (JPEG/PNG, max 3 MB)
 - ✅ JWT authentication (Bearer) with password hashing (bcrypt)
+- ✅ Case-insensitive e-mails (normalized to lower case)
+- ✅ Audit timestamps (`created_at` / `updated_at`) and snake_case columns
 - ✅ Generic login error and constant-time comparison to avoid user enumeration
 - ✅ Guard that re-checks on every request that the user still exists and is active
 - ✅ DTO validation with class-validator / class-transformer
@@ -40,7 +42,7 @@ A RESTful API for managing a movie catalog and its users, built with NestJS and 
 - ✅ Swagger / OpenAPI documentation
 - ✅ Health check with database probe
 - ✅ Idempotent database seed
-- ✅ Unit and E2E tests
+- ✅ Unit and E2E tests (E2E boot the real `AppModule` with the production pipes and filters)
 - ✅ Multi-stage Docker image (runs `prisma migrate deploy` on start)
 - ✅ GitHub Actions CI (lint, build, unit, E2E with Postgres, Docker build)
 
@@ -65,7 +67,35 @@ A RESTful API for managing a movie catalog and its users, built with NestJS and 
 
 ## 🗄 Database Schema
 
-![Database Schema](./docs/images/db-schema.png)
+```mermaid
+erDiagram
+  users ||--o{ watched_movies : watches
+  movies ||--o{ watched_movies : "watched by"
+  users {
+    int id PK
+    text name
+    text email UK "lower-cased"
+    text password_hash
+    boolean active
+    text avatar
+    timestamp created_at
+    timestamp updated_at
+  }
+  movies {
+    int id PK
+    text name "unique with year"
+    text genre
+    text director
+    int year
+    timestamp created_at
+    timestamp updated_at
+  }
+  watched_movies {
+    int user_id PK,FK
+    int movie_id PK,FK
+    timestamp watched_at
+  }
+```
 
 ---
 
@@ -79,8 +109,8 @@ A RESTful API for managing a movie catalog and its users, built with NestJS and 
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/brunocmg/api-rest-filmes.git
-cd api-rest-filmes
+git clone https://github.com/brunocmg/movie-catalog-api.git
+cd movie-catalog-api
 ```
 
 ### 2. Configure environment variables
@@ -214,7 +244,7 @@ npm run test:cov
 
 ## 🔄 CI
 
-Every pull request and every push to `develop`/`main` runs on GitHub Actions:
+Every pull request and every push to `main` runs on GitHub Actions:
 
 1. `npm ci` + `prisma generate`
 2. ESLint
