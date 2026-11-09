@@ -227,15 +227,17 @@ Every pull request and every push to `develop`/`main` runs on GitHub Actions:
 
 ## 🗺 Roadmap
 
+Highlights (full branch-by-branch plan in [docs/ROADMAP.md](./docs/ROADMAP.md)):
+
 - [ ] Role-based access control (`USER` / `ADMIN`)
 - [ ] Refresh tokens with rotation and logout
-- [ ] Series, seasons and episodes
+- [ ] Structured logging with request id and continuous deployment
+- [ ] Series, seasons and episodes (genres as a proper relation)
 - [ ] Watch history, favorites and watchlist
-- [ ] Genres, search, filters and sorting
-- [ ] Ratings and reviews
 - [ ] TMDB metadata import
-- [ ] Cloud storage for images
-- [ ] Caching and observability
+- [ ] Search, filters and sorting
+- [ ] Ratings, reviews, stats and recommendations
+- [ ] Cloud storage, caching and metrics
 - [ ] Web front end
 
 ---
