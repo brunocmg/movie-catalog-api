@@ -15,4 +15,10 @@ export class ResponseMovieDto {
 
   @ApiProperty({ example: 2008 })
   year: number;
+
+  @ApiProperty({ example: '2026-01-01T12:00:00.000Z' })
+  createdAt: Date;
+
+  @ApiProperty({ example: '2026-01-01T12:00:00.000Z' })
+  updatedAt: Date;
 }
