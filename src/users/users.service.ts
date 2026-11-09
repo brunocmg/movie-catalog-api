@@ -35,7 +35,7 @@ const userSelect = {
   email: true,
   role: true,
   avatar: true,
-  watchedMovies: { select: { movie: { select: { name: true } } } },
+  watchedTitles: { select: { title: { select: { name: true } } } },
 } as const;
 
 type SelectedUser = {
@@ -44,13 +44,13 @@ type SelectedUser = {
   email: string;
   role: Role;
   avatar: string | null;
-  watchedMovies: { movie: { name: string } }[];
+  watchedTitles: { title: { name: string } }[];
 };
 
 function toResponse(user: SelectedUser): ResponseUserDto {
   return {
     ...user,
-    watchedMovies: user.watchedMovies.map((w) => w.movie.name),
+    watchedTitles: user.watchedTitles.map((w) => w.title.name),
   };
 }
 

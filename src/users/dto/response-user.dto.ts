@@ -19,7 +19,7 @@ export class ResponseUserDto {
   avatar: string | null;
 
   @ApiProperty({ example: ['21', 'Fight Club'], type: [String] })
-  watchedMovies: string[];
+  watchedTitles: string[];
 }
 
 export class UserSummaryDto {

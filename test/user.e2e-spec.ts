@@ -12,7 +12,7 @@ type UserBody = {
   id: number;
   name: string;
   email: string;
-  watchedMovies: string[];
+  watchedTitles: string[];
 };
 
 const ANA = { name: 'Ana', email: 'ana@teste.com', password: '123123' };
@@ -50,7 +50,7 @@ describe('Users (e2e)', () => {
         email: 'bruno@teste.com',
         role: 'USER',
         avatar: null,
-        watchedMovies: [],
+        watchedTitles: [],
       });
     });
 
@@ -124,7 +124,7 @@ describe('Users (e2e)', () => {
         email: 'ana@teste.com',
         role: 'USER',
         avatar: null,
-        watchedMovies: [],
+        watchedTitles: [],
       });
     });
 

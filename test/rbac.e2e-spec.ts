@@ -128,7 +128,7 @@ describe('Roles and ownership (e2e)', () => {
         email: ANA.email,
         role: 'USER',
         avatar: null,
-        watchedMovies: [],
+        watchedTitles: [],
       });
     });
 

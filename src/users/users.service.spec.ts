@@ -56,7 +56,7 @@ const userSelect = {
   email: true,
   role: true,
   avatar: true,
-  watchedMovies: { select: { movie: { select: { name: true } } } },
+  watchedTitles: { select: { title: { select: { name: true } } } },
 };
 
 const userFromDb = {
@@ -65,10 +65,10 @@ const userFromDb = {
   email: 'bruno@teste.com',
   role: Role.USER,
   avatar: null,
-  watchedMovies: [{ movie: { name: 'Fight Club' } }],
+  watchedTitles: [{ title: { name: 'Fight Club' } }],
 };
 
-const userResponse = { ...userFromDb, watchedMovies: ['Fight Club'] };
+const userResponse = { ...userFromDb, watchedTitles: ['Fight Club'] };
 
 const asUser = (id: number): AuthenticatedUser => ({
   id,
