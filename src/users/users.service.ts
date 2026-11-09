@@ -1,21 +1,22 @@
 import {
-  BadRequestException,
-  HttpException,
-  HttpStatus,
+  ConflictException,
+  ForbiddenException,
   Injectable,
-  Logger,
+  NotFoundException,
+  UnsupportedMediaTypeException,
 } from '@nestjs/common';
+import * as path from 'node:path';
+import * as fs from 'node:fs/promises';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateUserDto } from './dto/create-user.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
+import { isPrismaKnownError, PrismaErrorCode } from '../prisma/prisma-errors';
 import { HashingServiceProtocol } from '../auth/hash/hashing.service';
 import { PayloadTokenDto } from '../auth/dto/payload-token.dto';
+import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
 import {
   ResponseUpdateAvatarDto,
   ResponseUserDto,
 } from './dto/response-user.dto';
-import * as path from 'node:path';
-import * as fs from 'node:fs/promises';
 
 type UploadedAvatarFile = {
   originalname: string;
@@ -23,99 +24,70 @@ type UploadedAvatarFile = {
   buffer: Buffer;
 };
 
-type MovieName = {
-  movie: {
-    name: string;
-  };
+const EXTENSION_BY_MIMETYPE: Record<string, string> = {
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
 };
+
+const userSelect = {
+  id: true,
+  name: true,
+  email: true,
+  watchedMovies: { select: { movie: { select: { name: true } } } },
+} as const;
+
+type SelectedUser = {
+  id: number;
+  name: string;
+  email: string;
+  watchedMovies: { movie: { name: string } }[];
+};
+
+function toResponse<T extends SelectedUser>(
+  user: T,
+): Omit<T, 'watchedMovies'> & { watchedMovies: string[] } {
+  return {
+    ...user,
+    watchedMovies: user.watchedMovies.map((w) => w.movie.name),
+  };
+}
 
 @Injectable()
 export class UsersService {
-  private readonly logger = new Logger(UsersService.name);
-
   constructor(
-    private prisma: PrismaService,
+    private readonly prisma: PrismaService,
     private readonly hashingService: HashingServiceProtocol,
   ) {}
 
   async findOne(id: number): Promise<ResponseUserDto> {
-    const user = await this.prisma.user.findFirst({
-      where: {
-        id: id,
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        watchedMovies: {
-          select: {
-            movie: {
-              select: {
-                name: true,
-              },
-            },
-          },
-        },
-      },
+    const user = await this.prisma.user.findUnique({
+      where: { id },
+      select: userSelect,
     });
 
-    if (user) {
-      const movieNames = (user.watchedMovies as MovieName[]).map(
-        (m) => m.movie.name,
-      );
-      return {
-        ...user,
-        watchedMovies: movieNames,
-      };
-    }
+    if (!user) throw new NotFoundException('User not found');
 
-    throw new HttpException('Usuário não encontrado!', HttpStatus.BAD_REQUEST);
+    return toResponse(user);
   }
 
-  async create(CreateUserDto: CreateUserDto): Promise<ResponseUserDto> {
-    try {
-      const passwordHash = await this.hashingService.hash(
-        CreateUserDto.password,
-      );
+  async create(createUserDto: CreateUserDto): Promise<ResponseUserDto> {
+    const passwordHash = await this.hashingService.hash(createUserDto.password);
 
+    try {
       const user = await this.prisma.user.create({
         data: {
-          name: CreateUserDto.name,
-          email: CreateUserDto.email,
-          passwordHash: passwordHash,
+          name: createUserDto.name,
+          email: createUserDto.email,
+          passwordHash,
         },
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          watchedMovies: {
-            select: {
-              movie: {
-                select: {
-                  name: true,
-                },
-              },
-            },
-          },
-        },
+        select: userSelect,
       });
-
-      const movieNames = (user.watchedMovies as MovieName[]).map(
-        (m) => m.movie.name,
-      );
-      return {
-        ...user,
-        watchedMovies: movieNames,
-      };
+      return toResponse(user);
     } catch (err) {
-      this.logger.error(
-        'Falha ao cadastrar usuário!',
-        err instanceof Error ? err.stack : String(err),
-      );
-      throw new HttpException(
-        'Falha ao cadastrar usuário!',
-        HttpStatus.BAD_REQUEST,
-      );
+      if (isPrismaKnownError(err, PrismaErrorCode.UniqueConstraint)) {
+        throw new ConflictException('E-mail already registered');
+      }
+      throw err;
     }
   }
 
@@ -124,111 +96,35 @@ export class UsersService {
     updateUserDto: UpdateUserDto,
     tokenPayload: PayloadTokenDto,
   ): Promise<ResponseUserDto> {
+    this.assertOwner(id, tokenPayload);
+
+    const data: { name?: string; passwordHash?: string } = {};
+    if (updateUserDto.name) data.name = updateUserDto.name;
+    if (updateUserDto.password) {
+      data.passwordHash = await this.hashingService.hash(
+        updateUserDto.password,
+      );
+    }
+
     try {
-      const user = await this.prisma.user.findFirst({
-        where: {
-          id: id,
-        },
+      const user = await this.prisma.user.update({
+        where: { id },
+        data,
+        select: userSelect,
       });
-
-      if (!user) {
-        throw new HttpException('Usuário não existe!', HttpStatus.BAD_REQUEST);
-      }
-
-      if (user.id !== tokenPayload.sub) {
-        throw new HttpException('Acesso negado', HttpStatus.BAD_REQUEST);
-      }
-
-      const dataUser: { name?: string; passwordHash?: string } = {
-        name: updateUserDto.name ? updateUserDto.name : user.name,
-      };
-
-      if (updateUserDto?.password) {
-        const passwordHash = await this.hashingService.hash(
-          updateUserDto?.password,
-        );
-        dataUser['passwordHash'] = passwordHash;
-      }
-
-      const updateUser = await this.prisma.user.update({
-        where: {
-          id: user.id,
-        },
-        data: {
-          name: dataUser.name,
-          passwordHash: dataUser?.passwordHash
-            ? dataUser?.passwordHash
-            : user.passwordHash,
-        },
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          watchedMovies: {
-            select: {
-              movie: {
-                select: {
-                  name: true,
-                },
-              },
-            },
-          },
-        },
-      });
-
-      const movieNames = (updateUser.watchedMovies as MovieName[]).map(
-        (m) => m.movie.name,
-      );
-      return {
-        ...updateUser,
-        watchedMovies: movieNames,
-      };
+      return toResponse(user);
     } catch (err) {
-      this.logger.error(
-        'Falha ao atualizar usuário!',
-        err instanceof Error ? err.stack : String(err),
-      );
-      throw new HttpException(
-        'Falha ao atualizar usuário!',
-        HttpStatus.BAD_REQUEST,
-      );
+      throw this.notFoundOr(err);
     }
   }
 
-  async delete(id: number, tokenPayload: PayloadTokenDto) {
+  async delete(id: number, tokenPayload: PayloadTokenDto): Promise<void> {
+    this.assertOwner(id, tokenPayload);
+
     try {
-      const user = await this.prisma.user.findFirst({
-        where: {
-          id: id,
-        },
-      });
-
-      if (!user) {
-        throw new HttpException('Usuário não existe!', HttpStatus.BAD_REQUEST);
-      }
-
-      if (user.id !== tokenPayload.sub) {
-        throw new HttpException('Acesso negado', HttpStatus.BAD_REQUEST);
-      }
-
-      await this.prisma.user.delete({
-        where: {
-          id: user.id,
-        },
-      });
-
-      return {
-        message: 'Usuário foi deletado com sucesso!',
-      };
+      await this.prisma.user.delete({ where: { id } });
     } catch (err) {
-      this.logger.error(
-        'Falha ao deletar usuário!',
-        err instanceof Error ? err.stack : String(err),
-      );
-      throw new HttpException(
-        'Falha ao deletar usuário!',
-        HttpStatus.BAD_REQUEST,
-      );
+      throw this.notFoundOr(err);
     }
   }
 
@@ -236,76 +132,39 @@ export class UsersService {
     tokenPayload: PayloadTokenDto,
     file: UploadedAvatarFile,
   ): Promise<ResponseUpdateAvatarDto> {
-    try {
-      const EXTENSION_BY_MIMETYPE: Record<string, string> = {
-        'image/jpeg': 'jpg',
-        'image/png': 'png',
-      };
-      const fileExtension = EXTENSION_BY_MIMETYPE[file.mimetype];
-      if (!fileExtension)
-        throw new BadRequestException('Tipo de arquivo inválido');
-
-      const fileName = `${tokenPayload.sub}.${fileExtension}`;
-
-      const uploadDir = path.resolve(process.cwd(), 'files');
-      await fs.mkdir(uploadDir, { recursive: true });
-      const fileLocale = path.join(uploadDir, fileName);
-
-      await fs.writeFile(fileLocale, file.buffer);
-
-      const user = await this.prisma.user.findFirst({
-        where: {
-          id: tokenPayload.sub,
-        },
-      });
-
-      if (!user) {
-        throw new HttpException(
-          'Falha ao atualizar o avatar do usuário!',
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-
-      const updatedUser = await this.prisma.user.update({
-        where: {
-          id: user.id,
-        },
-        data: {
-          avatar: fileName,
-        },
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          watchedMovies: {
-            select: {
-              movie: {
-                select: {
-                  name: true,
-                },
-              },
-            },
-          },
-          avatar: true,
-        },
-      });
-
-      const movieNames = (updatedUser.watchedMovies as MovieName[]).map(
-        (m) => m.movie.name,
-      );
-      return {
-        ...updatedUser,
-        watchedMovies: movieNames,
-      };
-    } catch (err) {
-      this.logger.error(
-        'Falha ao atualizar o avatar do usuário',
-        err instanceof Error ? err.stack : String(err),
-      );
-      throw new HttpException(
-        'Falha ao atualizar o avatar do usuário!',
-        HttpStatus.BAD_REQUEST,
-      );
+    const extension = EXTENSION_BY_MIMETYPE[file.mimetype];
+    if (!extension) {
+      throw new UnsupportedMediaTypeException('Only JPEG and PNG are allowed');
     }
+
+    // The file name comes from the user id and the validated mimetype, never
+    // from the uploaded name, so it cannot be used for path traversal.
+    const fileName = `${tokenPayload.sub}.${extension}`;
+    const uploadDir = path.resolve(process.cwd(), 'files');
+    await fs.mkdir(uploadDir, { recursive: true });
+    await fs.writeFile(path.join(uploadDir, fileName), file.buffer);
+
+    try {
+      const user = await this.prisma.user.update({
+        where: { id: tokenPayload.sub },
+        data: { avatar: fileName },
+        select: { ...userSelect, avatar: true },
+      });
+      return toResponse(user);
+    } catch (err) {
+      throw this.notFoundOr(err);
+    }
+  }
+
+  private assertOwner(id: number, tokenPayload: PayloadTokenDto) {
+    if (id !== tokenPayload.sub) {
+      throw new ForbiddenException('You can only change your own account');
+    }
+  }
+
+  private notFoundOr(err: unknown): unknown {
+    return isPrismaKnownError(err, PrismaErrorCode.RecordNotFound)
+      ? new NotFoundException('User not found')
+      : err;
   }
 }

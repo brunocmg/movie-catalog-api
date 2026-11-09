@@ -36,7 +36,7 @@ export class AuthTokenGuard implements CanActivate {
     const token = this.extractTokenHeader(request);
 
     if (!token) {
-      throw new UnauthorizedException('Token não encontrado!');
+      throw new UnauthorizedException('Missing bearer token');
     }
 
     let payload: PayloadTokenDto;
@@ -48,8 +48,8 @@ export class AuthTokenGuard implements CanActivate {
         issuer: this.jwtConfiguration.issuer,
       });
     } catch {
-      this.logger.warn('Falha ao validar token');
-      throw new UnauthorizedException('Acesso não autorizado');
+      this.logger.warn('Token verification failed');
+      throw new UnauthorizedException('Invalid or expired token');
     }
 
     const user = await this.prisma.user.findUnique({
@@ -59,9 +59,9 @@ export class AuthTokenGuard implements CanActivate {
 
     if (!user?.active) {
       this.logger.warn(
-        `Acesso negado: usuário inexistente ou inativo (sub=${payload.sub})`,
+        `Access denied: user missing or inactive (sub=${payload.sub})`,
       );
-      throw new UnauthorizedException('Acesso não autorizado');
+      throw new UnauthorizedException('Invalid or expired token');
     }
 
     request[REQUEST_TOKEN_PAYLOAD_NAME] = payload;

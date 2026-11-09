@@ -1,23 +1,36 @@
 import {
-  ExceptionFilter,
-  Catch,
   ArgumentsHost,
+  Catch,
+  ExceptionFilter,
   HttpException,
   HttpStatus,
   Logger,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
+import { STATUS_CODES } from 'node:http';
+import {
+  isPrismaKnownError,
+  PrismaErrorCode,
+} from '../../prisma/prisma-errors';
 
-type PrismaKnownRequestError = {
-  name: 'PrismaClientKnownRequestError';
-  code: string;
-  message?: string;
+export type ErrorResponseBody = {
+  statusCode: number;
+  error: string;
+  message: string;
+  path: string;
+  timestamp: string;
 };
 
-type HttpErrorResponse = {
-  message?: string | string[];
-};
+type ResolvedError = { status: number; message: string };
 
+/**
+ * Turns every exception into the same JSON shape.
+ *
+ * - HttpException: status and message are kept.
+ * - Known Prisma errors (unique, FK, not found): mapped to 409/404 with a
+ *   generic message. Driver details never reach the client.
+ * - Anything else: 500 with a generic message, logged with the stack trace.
+ */
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
   private readonly logger = new Logger(AllExceptionsFilter.name);
@@ -27,72 +40,81 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const response = ctx.getResponse<Response>();
     const request = ctx.getRequest<Request>();
 
-    let status = HttpStatus.INTERNAL_SERVER_ERROR;
-    let message: string = 'Internal server error';
+    const { status, message } = this.resolve(exception);
+    this.log(exception, status, request);
 
+    const body: ErrorResponseBody = {
+      statusCode: status,
+      error: STATUS_CODES[status] ?? 'Error',
+      message,
+      path: request.url,
+      timestamp: new Date().toISOString(),
+    };
+
+    response.status(status).json(body);
+  }
+
+  private resolve(exception: unknown): ResolvedError {
     if (exception instanceof HttpException) {
-      status = exception.getStatus();
-      const res = exception.getResponse();
-      message = this.getHttpExceptionMessage(res);
-    } else {
-      this.logger.error(
-        `${request.method} ${request.url}`,
-        exception instanceof Error ? exception.stack : String(exception),
-      );
+      return {
+        status: exception.getStatus(),
+        message: this.httpExceptionMessage(exception),
+      };
+    }
 
-      if (this.isPrismaKnownRequestError(exception)) {
-        const prismaError = exception;
-        const code = prismaError.code;
-        switch (code) {
-          case 'P2025':
-            status = HttpStatus.NOT_FOUND;
-            message = 'Resource not found';
-            break;
-          case 'P2002':
-            status = HttpStatus.CONFLICT;
-            message = 'Unique constraint failed';
-            break;
-          default:
-            status = HttpStatus.BAD_REQUEST;
-            message = prismaError.message ?? 'Database error';
-        }
+    if (isPrismaKnownError(exception)) {
+      switch (exception.code) {
+        case PrismaErrorCode.UniqueConstraint:
+          return {
+            status: HttpStatus.CONFLICT,
+            message: 'Resource already exists',
+          };
+        case PrismaErrorCode.ForeignKeyConstraint:
+          return {
+            status: HttpStatus.CONFLICT,
+            message: 'Operation conflicts with related resources',
+          };
+        case PrismaErrorCode.RecordNotFound:
+          return {
+            status: HttpStatus.NOT_FOUND,
+            message: 'Resource not found',
+          };
       }
     }
 
-    response.status(status).json({
-      statusCode: status,
-      timestamp: new Date().toISOString(),
-      path: request.url,
-      message,
-    });
+    return {
+      status: HttpStatus.INTERNAL_SERVER_ERROR,
+      message: 'Internal server error',
+    };
   }
 
-  private isPrismaKnownRequestError(
-    exception: unknown,
-  ): exception is PrismaKnownRequestError {
-    return (
-      typeof exception === 'object' &&
-      exception !== null &&
-      'name' in exception &&
-      'code' in exception &&
-      (exception as PrismaKnownRequestError).name ===
-        'PrismaClientKnownRequestError'
-    );
+  private log(exception: unknown, status: number, request: Request) {
+    const route = `${request.method} ${request.url}`;
+
+    if (status >= 500) {
+      this.logger.error(
+        `${route} -> ${status}`,
+        exception instanceof Error ? exception.stack : String(exception),
+      );
+      return;
+    }
+
+    // Prisma errors that became 4xx usually mean a missing explicit check in a
+    // service, so they are worth a warning. Regular 4xx are expected traffic.
+    if (isPrismaKnownError(exception)) {
+      this.logger.warn(`${route} -> ${status} (prisma ${exception.code})`);
+    }
   }
 
-  private getHttpExceptionMessage(
-    response: string | HttpErrorResponse,
-  ): string {
-    if (typeof response === 'string') {
-      return response;
-    }
+  private httpExceptionMessage(exception: HttpException): string {
+    const res = exception.getResponse();
 
-    const message = response.message;
+    if (typeof res === 'string') return res;
 
-    if (Array.isArray(message)) {
-      return message.join(', ');
-    }
+    const message = (res as { message?: unknown }).message;
+    if (Array.isArray(message)) return message.join(', ');
+    if (typeof message === 'string') return message;
 
-    return message ?? 'Request failed';
+    return exception.message;
   }
 }

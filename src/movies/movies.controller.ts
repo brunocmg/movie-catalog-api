@@ -1,83 +1,102 @@
 import {
-  Controller,
-  Get,
-  Post,
   Body,
-  Patch,
-  Param,
+  Controller,
   Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
   ParseIntPipe,
+  Patch,
+  Post,
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { MoviesService } from './movies.service';
-import { CreateMovieDto } from './dto/create-movie.dto';
-import { UpdateMovieDto } from './dto/update-movie.dto';
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
+  ApiConflictResponse,
   ApiCreatedResponse,
-  ApiInternalServerErrorResponse,
+  ApiNoContentResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
+  ApiTags,
+  ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
+import { MoviesService } from './movies.service';
+import { CreateMovieDto } from './dto/create-movie.dto';
+import { UpdateMovieDto } from './dto/update-movie.dto';
 import { ResponseMovieDto } from './dto/response-movie.dto';
 import { PaginationDto } from './dto/pagination.dto';
 import { PaginatedMoviesDto } from './dto/paginated-movies.dto';
 import { AuthTokenGuard } from '../auth/guards/auth-token.guard';
+import { ErrorResponseDto } from '../common/dto/error-response.dto';
 
+@ApiTags('movies')
 @Controller('movies')
 export class MoviesController {
   constructor(private readonly moviesService: MoviesService) {}
 
+  @Post()
   @UseGuards(AuthTokenGuard)
   @ApiBearerAuth()
-  @Post()
   @ApiOperation({ summary: 'Register a new movie' })
-  @ApiCreatedResponse({
-    description: 'Movie created successfully',
-    type: ResponseMovieDto,
+  @ApiCreatedResponse({ type: ResponseMovieDto })
+  @ApiBadRequestResponse({
+    description: 'Invalid request body',
+    type: ErrorResponseDto,
   })
-  @ApiBadRequestResponse({ description: 'Invalid request body' })
-  @ApiInternalServerErrorResponse({ description: 'Movie registration failed' })
+  @ApiUnauthorizedResponse({ type: ErrorResponseDto })
+  @ApiConflictResponse({
+    description: 'A movie with this name and year already exists',
+    type: ErrorResponseDto,
+  })
   create(@Body() createMovieDto: CreateMovieDto) {
     return this.moviesService.create(createMovieDto);
   }
 
   @Get()
-  @ApiOperation({ summary: 'Find all movies' })
-  @ApiOkResponse({
-    description: 'Movies found successfully',
-    type: PaginatedMoviesDto,
+  @ApiOperation({ summary: 'List movies (paginated)' })
+  @ApiOkResponse({ type: PaginatedMoviesDto })
+  @ApiBadRequestResponse({
+    description: 'Invalid pagination params',
+    type: ErrorResponseDto,
   })
-  @ApiInternalServerErrorResponse({ description: 'Failed to find movies' })
   findAll(@Query() paginationDto: PaginationDto) {
     return this.moviesService.findAll(paginationDto);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Find one movie by id' })
-  @ApiOkResponse({
-    description: 'Movie found successfully',
-    type: ResponseMovieDto,
+  @ApiOkResponse({ type: ResponseMovieDto })
+  @ApiBadRequestResponse({ description: 'Invalid id', type: ErrorResponseDto })
+  @ApiNotFoundResponse({
+    description: 'Movie not found',
+    type: ErrorResponseDto,
   })
-  @ApiBadRequestResponse({ description: 'Invalid movie id' })
-  @ApiNotFoundResponse({ description: 'Movie not found' })
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.moviesService.findOne(id);
   }
 
+  @Patch(':id')
   @UseGuards(AuthTokenGuard)
   @ApiBearerAuth()
-  @Patch(':id')
   @ApiOperation({ summary: 'Update a movie' })
-  @ApiOkResponse({
-    description: 'Movie updated successfully',
-    type: ResponseMovieDto,
+  @ApiOkResponse({ type: ResponseMovieDto })
+  @ApiBadRequestResponse({
+    description: 'Invalid id or request body',
+    type: ErrorResponseDto,
   })
-  @ApiBadRequestResponse({ description: 'Invalid movie id or request body' })
-  @ApiNotFoundResponse({ description: 'Movie not found' })
+  @ApiUnauthorizedResponse({ type: ErrorResponseDto })
+  @ApiNotFoundResponse({
+    description: 'Movie not found',
+    type: ErrorResponseDto,
+  })
+  @ApiConflictResponse({
+    description: 'A movie with this name and year already exists',
+    type: ErrorResponseDto,
+  })
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() updateMovieDto: UpdateMovieDto,
@@ -85,17 +104,18 @@ export class MoviesController {
     return this.moviesService.update(id, updateMovieDto);
   }
 
+  @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
   @UseGuards(AuthTokenGuard)
   @ApiBearerAuth()
-  @Delete(':id')
   @ApiOperation({ summary: 'Delete a movie' })
-  @ApiOkResponse({
-    description: 'Movie deleted successfully',
-    type: ResponseMovieDto,
+  @ApiNoContentResponse({ description: 'Movie deleted' })
+  @ApiBadRequestResponse({ description: 'Invalid id', type: ErrorResponseDto })
+  @ApiUnauthorizedResponse({ type: ErrorResponseDto })
+  @ApiNotFoundResponse({
+    description: 'Movie not found',
+    type: ErrorResponseDto,
   })
-  @ApiBadRequestResponse({ description: 'Invalid movie id' })
-  @ApiNotFoundResponse({ description: 'Movie not found' })
-  @ApiInternalServerErrorResponse({ description: 'Failed to delete movie' })
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.moviesService.remove(id);
   }

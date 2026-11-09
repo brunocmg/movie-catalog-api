@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
   HttpStatus,
   Param,
   ParseFilePipeBuilder,
@@ -13,29 +14,35 @@ import {
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import {
+  ApiBadRequestResponse,
+  ApiBearerAuth,
+  ApiBody,
+  ApiConflictResponse,
+  ApiConsumes,
+  ApiCreatedResponse,
+  ApiForbiddenResponse,
+  ApiNoContentResponse,
+  ApiNotFoundResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiPayloadTooLargeResponse,
+  ApiTags,
+  ApiUnauthorizedResponse,
+  ApiUnprocessableEntityResponse,
+} from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { AuthTokenGuard } from '../auth/guards/auth-token.guard';
-import { TokenPayloadParam } from '../auth/param/token-payload.param';
-import { PayloadTokenDto } from '../auth/dto/payload-token.dto';
-import {
-  ApiBearerAuth,
-  ApiBadRequestResponse,
-  ApiBody,
-  ApiConsumes,
-  ApiCreatedResponse,
-  ApiOkResponse,
-  ApiOperation,
-  ApiUnauthorizedResponse,
-  ApiUnprocessableEntityResponse,
-  ApiPayloadTooLargeResponse,
-} from '@nestjs/swagger';
-import { FileInterceptor } from '@nestjs/platform-express';
 import {
   ResponseUpdateAvatarDto,
   ResponseUserDto,
 } from './dto/response-user.dto';
+import { AuthTokenGuard } from '../auth/guards/auth-token.guard';
+import { TokenPayloadParam } from '../auth/param/token-payload.param';
+import { PayloadTokenDto } from '../auth/dto/payload-token.dto';
+import { ErrorResponseDto } from '../common/dto/error-response.dto';
 
 type UploadedAvatarFile = {
   originalname: string;
@@ -43,44 +50,61 @@ type UploadedAvatarFile = {
   buffer: Buffer;
 };
 
+const MAX_AVATAR_SIZE = 3 * 1024 * 1024;
+
+@ApiTags('users')
 @Controller('users')
 export class UsersController {
   constructor(private readonly userService: UsersService) {}
 
+  @Get(':id')
   @UseGuards(AuthTokenGuard)
   @ApiBearerAuth()
-  @Get(':id')
   @ApiOperation({ summary: 'Find one user by id' })
-  @ApiOkResponse({
-    description: 'User found successfully',
-    type: ResponseUserDto,
+  @ApiOkResponse({ type: ResponseUserDto })
+  @ApiBadRequestResponse({ description: 'Invalid id', type: ErrorResponseDto })
+  @ApiUnauthorizedResponse({ type: ErrorResponseDto })
+  @ApiNotFoundResponse({
+    description: 'User not found',
+    type: ErrorResponseDto,
   })
-  @ApiBadRequestResponse({ description: 'Invalid user id or user not found' })
   findOneUser(@Param('id', ParseIntPipe) id: number) {
     return this.userService.findOne(id);
   }
 
   @Post()
-  @ApiOperation({ summary: 'Create a new user' })
-  @ApiCreatedResponse({
-    description: 'User created successfully',
-    type: ResponseUserDto,
+  @ApiOperation({ summary: 'Register a new user' })
+  @ApiCreatedResponse({ type: ResponseUserDto })
+  @ApiBadRequestResponse({
+    description: 'Invalid request body',
+    type: ErrorResponseDto,
   })
-  @ApiBadRequestResponse({ description: 'Invalid request body' })
+  @ApiConflictResponse({
+    description: 'E-mail already registered',
+    type: ErrorResponseDto,
+  })
   createUser(@Body() createUserDto: CreateUserDto) {
     return this.userService.create(createUserDto);
   }
 
+  @Patch(':id')
   @UseGuards(AuthTokenGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Update a user' })
-  @ApiOkResponse({
-    description: 'User updated successfully',
-    type: ResponseUserDto,
+  @ApiOperation({ summary: 'Update the own user (name and/or password)' })
+  @ApiOkResponse({ type: ResponseUserDto })
+  @ApiBadRequestResponse({
+    description: 'Invalid id or request body',
+    type: ErrorResponseDto,
   })
-  @ApiBadRequestResponse({ description: 'Invalid user id or request body' })
-  @ApiUnauthorizedResponse({ description: 'Invalid or missing token' })
-  @Patch(':id')
+  @ApiUnauthorizedResponse({ type: ErrorResponseDto })
+  @ApiForbiddenResponse({
+    description: 'Not your account',
+    type: ErrorResponseDto,
+  })
+  @ApiNotFoundResponse({
+    description: 'User not found',
+    type: ErrorResponseDto,
+  })
   updateUser(
     @Param('id', ParseIntPipe) id: number,
     @Body() updateUserDto: UpdateUserDto,
@@ -89,20 +113,22 @@ export class UsersController {
     return this.userService.update(id, updateUserDto, tokenPayload);
   }
 
+  @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
   @UseGuards(AuthTokenGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Delete a user' })
-  @ApiOkResponse({
-    description: 'User deleted successfully',
-    schema: {
-      example: {
-        message: 'Usuario foi deletado com sucesso!',
-      },
-    },
+  @ApiOperation({ summary: 'Delete the own user' })
+  @ApiNoContentResponse({ description: 'User deleted' })
+  @ApiBadRequestResponse({ description: 'Invalid id', type: ErrorResponseDto })
+  @ApiUnauthorizedResponse({ type: ErrorResponseDto })
+  @ApiForbiddenResponse({
+    description: 'Not your account',
+    type: ErrorResponseDto,
   })
-  @ApiBadRequestResponse({ description: 'Invalid user id or access denied' })
-  @ApiUnauthorizedResponse({ description: 'Invalid or missing token' })
-  @Delete(':id')
+  @ApiNotFoundResponse({
+    description: 'User not found',
+    type: ErrorResponseDto,
+  })
   deleteUser(
     @Param('id', ParseIntPipe) id: number,
     @TokenPayloadParam() tokenPayload: PayloadTokenDto,
@@ -110,47 +136,37 @@ export class UsersController {
     return this.userService.delete(id, tokenPayload);
   }
 
+  @Post('upload')
   @UseGuards(AuthTokenGuard)
+  @UseInterceptors(
+    FileInterceptor('file', { limits: { fileSize: MAX_AVATAR_SIZE } }),
+  )
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Upload user avatar' })
+  @ApiOperation({ summary: 'Upload the own avatar (JPEG or PNG, max 3 MB)' })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
     schema: {
       type: 'object',
-      properties: {
-        file: {
-          type: 'string',
-          format: 'binary',
-        },
-      },
+      properties: { file: { type: 'string', format: 'binary' } },
     },
   })
-  @ApiOkResponse({
-    description: 'Avatar updated successfully',
-    type: ResponseUpdateAvatarDto,
-  })
-  @ApiUnauthorizedResponse({ description: 'Invalid or missing token' })
+  @ApiCreatedResponse({ type: ResponseUpdateAvatarDto })
+  @ApiUnauthorizedResponse({ type: ErrorResponseDto })
   @ApiUnprocessableEntityResponse({
-    description: 'Invalid file type or file too large',
+    description: 'Missing file or invalid file type',
+    type: ErrorResponseDto,
   })
-  @ApiPayloadTooLargeResponse()
-  @UseInterceptors(
-    FileInterceptor('file', { limits: { fileSize: 3 * 1024 * 1024 } }),
-  )
-  @Post('upload')
-  async uploadAvatar(
+  @ApiPayloadTooLargeResponse({
+    description: 'File larger than 3 MB',
+    type: ErrorResponseDto,
+  })
+  uploadAvatar(
     @TokenPayloadParam() tokenPayload: PayloadTokenDto,
     @UploadedFile(
       new ParseFilePipeBuilder()
-        .addFileTypeValidator({
-          fileType: /^image\/(jpeg|png)$/,
-        })
-        .addMaxSizeValidator({
-          maxSize: 3 * (1024 * 1024),
-        })
-        .build({
-          errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY,
-        }),
+        .addFileTypeValidator({ fileType: /^image\/(jpeg|png)$/ })
+        .addMaxSizeValidator({ maxSize: MAX_AVATAR_SIZE })
+        .build({ errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY }),
     )
     file: UploadedAvatarFile,
   ) {

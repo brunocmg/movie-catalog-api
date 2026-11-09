@@ -96,7 +96,49 @@ describe('Movies (e2e)', () => {
   });
 
   it('returns 404 for a missing movie', async () => {
-    await request(app.getHttpServer()).get('/movies/999').expect(404);
+    const res = await request(app.getHttpServer())
+      .get('/movies/999')
+      .expect(404);
+
+    expect(res.body).toMatchObject({
+      statusCode: 404,
+      error: 'Not Found',
+      message: 'Movie not found',
+      path: '/movies/999',
+    });
+  });
+
+  it('returns 409 when an update collides with another movie', async () => {
+    await createMovie({ name: 'Dune', year: 2021 }).expect(201);
+    const other = (await createMovie({ name: 'Dune', year: 1984 }))
+      .body as MovieBody;
+
+    await request(app.getHttpServer())
+      .patch(`/movies/${other.id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ year: 2021 })
+      .expect(409);
+  });
+
+  it('returns 404 when updating a missing movie', async () => {
+    await request(app.getHttpServer())
+      .patch('/movies/999')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ year: 2000 })
+      .expect(404);
+  });
+
+  it('deletes with 204, then 404', async () => {
+    const movie = (await createMovie({ name: 'Heat', year: 1995 }))
+      .body as MovieBody;
+
+    const del = () =>
+      request(app.getHttpServer())
+        .delete(`/movies/${movie.id}`)
+        .set('Authorization', `Bearer ${token}`);
+
+    await del().expect(204);
+    await del().expect(404);
   });
 
   it('requires a token to create', async () => {

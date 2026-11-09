@@ -14,6 +14,9 @@ type UserBody = {
   watchedMovies: string[];
 };
 
+const ANA = { name: 'Ana', email: 'ana@teste.com', password: '123123' };
+const LUCAS = { name: 'Lucas', email: 'lucas@teste.com', password: '123123' };
+
 describe('Users (e2e)', () => {
   let app: INestApplication<App>;
 
@@ -126,24 +129,99 @@ describe('Users (e2e)', () => {
         .send({ name: 'X' })
         .expect(401);
     });
+
+    it("returns 403 when changing someone else's account", async () => {
+      const ana = await registerAndLogin(app, ANA);
+      const lucas = await registerAndLogin(app, LUCAS);
+
+      const res = await request(app.getHttpServer())
+        .patch(`/users/${ana.id}`)
+        .set('Authorization', `Bearer ${lucas.token}`)
+        .send({ name: 'Hacked' })
+        .expect(403);
+
+      expect(res.body).toMatchObject({
+        statusCode: 403,
+        error: 'Forbidden',
+        message: 'You can only change your own account',
+        path: `/users/${ana.id}`,
+      });
+    });
+
+    it('rejects an e-mail change with 400', async () => {
+      const ana = await registerAndLogin(app, ANA);
+
+      await request(app.getHttpServer())
+        .patch(`/users/${ana.id}`)
+        .set('Authorization', `Bearer ${ana.token}`)
+        .send({ email: 'new@teste.com' })
+        .expect(400);
+    });
+  });
+
+  describe('POST /users (conflicts)', () => {
+    it('returns 409 for an e-mail already registered, ignoring case', async () => {
+      await registerAndLogin(app, ANA);
+
+      const res = await request(app.getHttpServer())
+        .post('/users')
+        .send({ ...ANA, email: 'ANA@teste.com' })
+        .expect(409);
+
+      expect(res.body).toMatchObject({
+        statusCode: 409,
+        error: 'Conflict',
+        message: 'E-mail already registered',
+      });
+    });
+  });
+
+  describe('GET /users/:id', () => {
+    it('returns 404 for a missing user', async () => {
+      const ana = await registerAndLogin(app, ANA);
+
+      const res = await request(app.getHttpServer())
+        .get('/users/999')
+        .set('Authorization', `Bearer ${ana.token}`)
+        .expect(404);
+
+      expect((res.body as { message: string }).message).toBe('User not found');
+    });
+
+    it('returns 400 for a non-numeric id', async () => {
+      const ana = await registerAndLogin(app, ANA);
+
+      await request(app.getHttpServer())
+        .get('/users/abc')
+        .set('Authorization', `Bearer ${ana.token}`)
+        .expect(400);
+    });
   });
 
   describe('DELETE /users/:id', () => {
-    it('deletes the own user', async () => {
-      const auth = await registerAndLogin(app, {
-        name: 'Lucas',
-        email: 'lucas@teste.com',
-        password: '123123',
-      });
+    it('deletes the own user with 204 and invalidates the token', async () => {
+      const lucas = await registerAndLogin(app, LUCAS);
 
-      const res = await request(app.getHttpServer())
-        .delete(`/users/${auth.id}`)
-        .set('Authorization', `Bearer ${auth.token}`)
-        .expect(200);
+      await request(app.getHttpServer())
+        .delete(`/users/${lucas.id}`)
+        .set('Authorization', `Bearer ${lucas.token}`)
+        .expect(204);
 
-      expect((res.body as { message: string }).message).toBe(
-        'Usuário foi deletado com sucesso!',
-      );
+      // the guard checks that the user still exists on every request
+      await request(app.getHttpServer())
+        .get(`/users/${lucas.id}`)
+        .set('Authorization', `Bearer ${lucas.token}`)
+        .expect(401);
+    });
+
+    it("returns 403 when deleting someone else's account", async () => {
+      const ana = await registerAndLogin(app, ANA);
+      const lucas = await registerAndLogin(app, LUCAS);
+
+      await request(app.getHttpServer())
+        .delete(`/users/${ana.id}`)
+        .set('Authorization', `Bearer ${lucas.token}`)
+        .expect(403);
     });
   });
 });
