@@ -1,29 +1,31 @@
 import { NestFactory } from '@nestjs/core';
+import { ConfigService } from '@nestjs/config';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app/app.module';
 import { setupApp } from './app/app.setup';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { EnvironmentVariables } from './config/env.validation';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  const port = Number(process.env.PORT ?? 3000);
-
-  app.enableCors({
-    origin: '*',
-  });
+  const config =
+    app.get<ConfigService<EnvironmentVariables, true>>(ConfigService);
 
   setupApp(app);
+  app.enableShutdownHooks();
 
-  const configSwagger = new DocumentBuilder()
-    .setTitle('Movies List')
-    .setDescription('Movies list API')
-    .setVersion('1.0')
-    .addBearerAuth()
-    .build();
+  if (config.get('SWAGGER_ENABLED', { infer: true })) {
+    const document = new DocumentBuilder()
+      .setTitle('Movie Catalog API')
+      .setDescription('Movies, users and watch history')
+      .setVersion('1.0')
+      .addBearerAuth()
+      .build();
 
-  const documentFactory = () =>
-    SwaggerModule.createDocument(app, configSwagger);
-  SwaggerModule.setup('docs', app, documentFactory);
+    SwaggerModule.setup('docs', app, () =>
+      SwaggerModule.createDocument(app, document),
+    );
+  }
 
-  await app.listen(port);
+  await app.listen(config.get('PORT', { infer: true }));
 }
 void bootstrap();
