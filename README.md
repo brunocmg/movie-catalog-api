@@ -37,7 +37,7 @@ A RESTful API for managing a movie catalog and its users, built with NestJS and 
 - ✅ Generic login error and constant-time comparison to avoid user enumeration
 - ✅ Guard that re-checks on every request that the user still exists and is active
 - ✅ DTO validation with class-validator / class-transformer
-- ✅ Global exception filter (including Prisma errors → 404/409)
+- ✅ Consistent error responses: 403/404/409 where they belong, no database details leaked, unexpected errors logged with stack trace
 - ✅ Request logging with interceptors and Nest `Logger`
 - ✅ Swagger / OpenAPI documentation
 - ✅ Health check with database probe
@@ -195,14 +195,38 @@ Swagger UI is available at `http://localhost:3000/docs`.
 | GET | `/movies/:id` | Get movie by ID | ❌ |
 | POST | `/movies` | Create a movie | ✅ |
 | PATCH | `/movies/:id` | Update a movie | ✅ |
-| DELETE | `/movies/:id` | Delete a movie | ✅ |
+| DELETE | `/movies/:id` | Delete a movie (`204`) | ✅ |
 | POST | `/users` | Register a user | ❌ |
 | GET | `/users/:id` | Get user by ID | ✅ |
-| PATCH | `/users/:id` | Update own user | ✅ |
-| DELETE | `/users/:id` | Delete own user | ✅ |
+| PATCH | `/users/:id` | Update own name/password | ✅ |
+| DELETE | `/users/:id` | Delete own user (`204`) | ✅ |
 | POST | `/users/upload` | Upload own avatar | ✅ |
 | GET | `/files/:name` | Serve uploaded avatars | ❌ |
 | GET | `/health` | Health check | ❌ |
+
+### Error format
+
+Every error has the same shape:
+
+```json
+{
+  "statusCode": 409,
+  "error": "Conflict",
+  "message": "A movie with this name and year already exists",
+  "path": "/movies",
+  "timestamp": "2026-01-01T12:00:00.000Z"
+}
+```
+
+| Status | When |
+|---|---|
+| `400` | Invalid body, query or id |
+| `401` | Missing, invalid or expired token |
+| `403` | Changing another user's account |
+| `404` | Resource not found |
+| `409` | Duplicated e-mail or movie (name + year) |
+| `413` / `422` | Avatar too large / wrong type |
+| `500` | Unexpected error (details only in the server log) |
 
 ---
 
