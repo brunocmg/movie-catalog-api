@@ -39,6 +39,8 @@ A RESTful API for managing a movie catalog and its users, built with NestJS and 
 - ✅ DTO validation with class-validator / class-transformer
 - ✅ Consistent error responses: 403/404/409 where they belong, no database details leaked, unexpected errors logged with stack trace
 - ✅ Request logging with interceptors and Nest `Logger`
+- ✅ Security headers (helmet), configurable CORS and rate limiting (stricter on login and sign-up)
+- ✅ Environment validated at boot: the app refuses to start with a clear message
 - ✅ Swagger / OpenAPI documentation
 - ✅ Health check with database probe
 - ✅ Idempotent database seed
@@ -127,7 +129,9 @@ Fill in the values in `.env` (see [Environment Variables](#-environment-variable
 docker compose up --build
 ```
 
-Compose waits for Postgres to be healthy, applies the migrations and starts the API in watch mode at `http://localhost:3000`.
+Compose waits for Postgres to be healthy, applies the migrations and starts the API in watch mode (hot reload) at `http://localhost:3000`.
+
+> After changing dependencies, recreate the container with fresh `node_modules`: `docker compose up --build -V app`.
 
 Seed the database (optional):
 
@@ -158,25 +162,26 @@ docker run --env-file .env -p 3000:3000 movie-catalog-api
 
 ## 🔐 Environment Variables
 
-```env
-# Database
-DB_USER=postgres
-DB_PASSWORD=your_db_password
-DB_NAME=catalog
-DATABASE_URL="postgresql://postgres:your_db_password@localhost:5432/catalog"
+All variables are validated when the app starts ([env.validation.ts](./src/config/env.validation.ts)). A missing or invalid value stops the boot with a message listing every problem. See [.env.example](./.env.example).
 
-# JWT
-JWT_SECRET=generate_a_long_random_value   # e.g. openssl rand -base64 48
-JWT_TOKEN_AUDIENCE=http://localhost:3000
-JWT_TOKEN_ISSUER=http://localhost:3000
-JWT_TTL="1h"
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `DATABASE_URL` | ✅ | | `postgresql://` connection string |
+| `JWT_SECRET` | ✅ | | At least 32 characters (`openssl rand -base64 48`) |
+| `JWT_TOKEN_AUDIENCE` / `JWT_TOKEN_ISSUER` | ✅ | | JWT `aud` / `iss` claims |
+| `JWT_TTL` | ✅ | | Token lifetime: `900`, `15m`, `1h`, `7d` |
+| `NODE_ENV` | | `development` | `development`, `production` or `test` |
+| `PORT` | | `3000` | HTTP port |
+| `SWAGGER_ENABLED` | | `true` | Serve the docs at `/docs` |
+| `CORS_ORIGINS` | | | `*` or a comma-separated list. Unset: any origin in development, disabled in production |
+| `TRUST_PROXY` | | `0` | Proxies in front of the app (`1` on Render), so rate limiting sees the real IP |
+| `THROTTLE_TTL_MS` | | `60000` | Rate-limit window |
+| `THROTTLE_LIMIT` | | `100` | Requests per window, any route |
+| `THROTTLE_AUTH_LIMIT` | | `5` | Login / sign-up attempts per window |
 
-# App
-NODE_ENV=development
-PORT=3000
-```
+`DB_USER`, `DB_PASSWORD` and `DB_NAME` are only used by docker compose to create the database.
 
-For E2E tests, create a `.env.test` with the same JWT variables and a `DATABASE_URL` pointing to a **separate** database — the tests wipe the users table.
+For E2E tests, create a `.env.test` with the same JWT variables and a `DATABASE_URL` pointing to a **separate** database — the tests wipe every table.
 
 ---
 
@@ -225,6 +230,7 @@ Every error has the same shape:
 | `403` | Changing another user's account |
 | `404` | Resource not found |
 | `409` | Duplicated e-mail or movie (name + year) |
+| `429` | Too many requests (login and sign-up: 5 per minute per IP) |
 | `413` / `422` | Avatar too large / wrong type |
 | `500` | Unexpected error (details only in the server log) |
 

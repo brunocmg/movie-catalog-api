@@ -6,7 +6,6 @@ import {
   HttpCode,
   HttpStatus,
   Param,
-  ParseIntPipe,
   Patch,
   Post,
   Query,
@@ -32,6 +31,7 @@ import { PaginationDto } from './dto/pagination.dto';
 import { PaginatedMoviesDto } from './dto/paginated-movies.dto';
 import { AuthTokenGuard } from '../auth/guards/auth-token.guard';
 import { ErrorResponseDto } from '../common/dto/error-response.dto';
+import { ParseIdPipe } from '../common/pipes/parse-id.pipe';
 
 @ApiTags('movies')
 @Controller('movies')
@@ -75,7 +75,7 @@ export class MoviesController {
     description: 'Movie not found',
     type: ErrorResponseDto,
   })
-  findOne(@Param('id', ParseIntPipe) id: number) {
+  findOne(@Param('id', ParseIdPipe) id: number) {
     return this.moviesService.findOne(id);
   }
 
@@ -98,7 +98,7 @@ export class MoviesController {
     type: ErrorResponseDto,
   })
   update(
-    @Param('id', ParseIntPipe) id: number,
+    @Param('id', ParseIdPipe) id: number,
     @Body() updateMovieDto: UpdateMovieDto,
   ) {
     return this.moviesService.update(id, updateMovieDto);
@@ -116,7 +116,7 @@ export class MoviesController {
     description: 'Movie not found',
     type: ErrorResponseDto,
   })
-  remove(@Param('id', ParseIntPipe) id: number) {
+  remove(@Param('id', ParseIdPipe) id: number) {
     return this.moviesService.remove(id);
   }
 }

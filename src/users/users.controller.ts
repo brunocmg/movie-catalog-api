@@ -7,7 +7,6 @@ import {
   HttpStatus,
   Param,
   ParseFilePipeBuilder,
-  ParseIntPipe,
   Patch,
   Post,
   UploadedFile,
@@ -29,6 +28,7 @@ import {
   ApiOperation,
   ApiPayloadTooLargeResponse,
   ApiTags,
+  ApiTooManyRequestsResponse,
   ApiUnauthorizedResponse,
   ApiUnprocessableEntityResponse,
 } from '@nestjs/swagger';
@@ -43,6 +43,8 @@ import { AuthTokenGuard } from '../auth/guards/auth-token.guard';
 import { TokenPayloadParam } from '../auth/param/token-payload.param';
 import { PayloadTokenDto } from '../auth/dto/payload-token.dto';
 import { ErrorResponseDto } from '../common/dto/error-response.dto';
+import { ParseIdPipe } from '../common/pipes/parse-id.pipe';
+import { StrictThrottle } from '../common/throttling/throttling';
 
 type UploadedAvatarFile = {
   originalname: string;
@@ -68,11 +70,12 @@ export class UsersController {
     description: 'User not found',
     type: ErrorResponseDto,
   })
-  findOneUser(@Param('id', ParseIntPipe) id: number) {
+  findOneUser(@Param('id', ParseIdPipe) id: number) {
     return this.userService.findOne(id);
   }
 
   @Post()
+  @StrictThrottle()
   @ApiOperation({ summary: 'Register a new user' })
   @ApiCreatedResponse({ type: ResponseUserDto })
   @ApiBadRequestResponse({
@@ -81,6 +84,10 @@ export class UsersController {
   })
   @ApiConflictResponse({
     description: 'E-mail already registered',
+    type: ErrorResponseDto,
+  })
+  @ApiTooManyRequestsResponse({
+    description: 'Too many sign-ups from this IP',
     type: ErrorResponseDto,
   })
   createUser(@Body() createUserDto: CreateUserDto) {
@@ -106,7 +113,7 @@ export class UsersController {
     type: ErrorResponseDto,
   })
   updateUser(
-    @Param('id', ParseIntPipe) id: number,
+    @Param('id', ParseIdPipe) id: number,
     @Body() updateUserDto: UpdateUserDto,
     @TokenPayloadParam() tokenPayload: PayloadTokenDto,
   ) {
@@ -130,7 +137,7 @@ export class UsersController {
     type: ErrorResponseDto,
   })
   deleteUser(
-    @Param('id', ParseIntPipe) id: number,
+    @Param('id', ParseIdPipe) id: number,
     @TokenPayloadParam() tokenPayload: PayloadTokenDto,
   ) {
     return this.userService.delete(id, tokenPayload);
