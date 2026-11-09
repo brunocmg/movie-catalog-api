@@ -3,6 +3,7 @@
 A RESTful API for managing a movie catalog and its users, built with NestJS and TypeScript. Users can register, authenticate, browse movies and track which ones they've watched.
 
 [![CI](https://github.com/brunocmg/movie-catalog-api/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/brunocmg/movie-catalog-api/actions/workflows/ci.yml)
+[![Deploy](https://github.com/brunocmg/movie-catalog-api/actions/workflows/deploy-check.yml/badge.svg)](https://github.com/brunocmg/movie-catalog-api/actions/workflows/deploy-check.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![NestJS](https://img.shields.io/badge/NestJS-E0234E?style=flat&logo=nestjs&logoColor=white)](https://nestjs.com/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
@@ -186,6 +187,7 @@ All variables are validated when the app starts ([env.validation.ts](./src/confi
 | `JWT_REFRESH_TTL` | | `7d` | Refresh token lifetime |
 | `NODE_ENV` | | `development` | `development`, `production` or `test` |
 | `PORT` | | `3000` | HTTP port |
+| `RENDER_GIT_COMMIT` | | | Set by Render; shown as `commit` in `/health` |
 | `LOG_LEVEL` | | `info` | `fatal`, `error`, `warn`, `info`, `debug`, `trace` or `silent` |
 | `SWAGGER_ENABLED` | | `true` | Serve the docs at `/docs` |
 | `CORS_ORIGINS` | | | `*` or a comma-separated list. Unset: any origin in development, disabled in production |
@@ -351,7 +353,7 @@ Highlights (full branch-by-branch plan in [docs/ROADMAP.md](./docs/ROADMAP.md)):
 
 - [x] Role-based access control (`USER` / `ADMIN`)
 - [ ] Refresh tokens with rotation and logout
-- [ ] Structured logging with request id and continuous deployment
+- [x] Structured logging with request id and continuous deployment
 - [ ] Series, seasons and episodes (genres as a proper relation)
 - [ ] Watch history, favorites and watchlist
 - [ ] TMDB metadata import
@@ -365,6 +367,20 @@ Highlights (full branch-by-branch plan in [docs/ROADMAP.md](./docs/ROADMAP.md)):
 ## 🌐 Deploy
 
 Live API: https://movie-catalog-api-54m7.onrender.com/docs
+
+Hosted on [Render](https://render.com) (web service, configured in [render.yaml](./render.yaml)) with a [Neon](https://neon.tech) Postgres database.
+
+```mermaid
+flowchart LR
+  PR[Pull request] --> CI[CI: lint, build, unit, E2E, Docker]
+  CI -->|merge to main| CImain[CI on main]
+  CImain -->|checks pass| Render[Render build + prisma migrate deploy]
+  Render --> Check[Deploy check: /health serves the new commit + smoke test]
+```
+
+- Render deploys only after the CI checks pass on `main` (`autoDeployTrigger: checksPass`).
+- Migrations run before the app starts, and Render only switches traffic once `/health` answers.
+- The **Deploy check** workflow waits until `/health` reports the merged commit, then runs a smoke test against production. A broken deploy shows up as a failed check on the commit.
 
 ---
 

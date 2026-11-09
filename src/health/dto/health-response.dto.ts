@@ -15,6 +15,12 @@ export class HealthResponseDto {
   @ApiProperty({ example: 120.5 })
   uptime: number;
 
+  @ApiProperty({
+    example: '2da0580',
+    description: 'Deployed commit, or "local" outside Render',
+  })
+  commit: string;
+
   @ApiProperty({ type: HealthDatabaseDto })
   database: HealthDatabaseDto;
 }

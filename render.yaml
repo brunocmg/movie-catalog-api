@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: movie-catalog-api
+    runtime: node
+    plan: free
+    buildCommand: npm ci --include=dev && npx prisma generate && npm run build
+    startCommand: npx prisma migrate deploy && node dist/main
+    healthCheckPath: /health
+    autoDeployTrigger: checksPass
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: TRUST_PROXY
+        value: "1"
+      - key: JWT_TTL
+        value: 15m
+      - key: JWT_REFRESH_TTL
+        value: 7d
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_TOKEN_AUDIENCE
+        sync: false
+      - key: JWT_TOKEN_ISSUER
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false

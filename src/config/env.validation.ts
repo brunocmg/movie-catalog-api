@@ -54,6 +54,10 @@ export class EnvironmentVariables {
   @IsEnum(LogLevel)
   LOG_LEVEL: LogLevel = LogLevel.Info;
 
+  @IsOptional()
+  @IsString()
+  RENDER_GIT_COMMIT?: string;
+
   @Matches(/^postgres(ql)?:\/\/.+/, {
     message: 'DATABASE_URL must be a postgresql:// connection string',
   })
