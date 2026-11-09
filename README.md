@@ -1,8 +1,9 @@
 # 🎬 Movie Catalog API
 
-A RESTful API for managing movies and users, built with NestJS and TypeScript. Users can register, authenticate, browse movies, and track which ones they've watched.
+A RESTful API for managing a movie catalog and its users, built with NestJS and TypeScript. Users can register, authenticate, browse movies and track which ones they've watched.
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/brunocmg/movie-catalog-api/blob/main/LICENSE)
+[![CI](https://github.com/brunocmg/api-rest-filmes/actions/workflows/ci.yml/badge.svg?branch=develop)](https://github.com/brunocmg/api-rest-filmes/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![NestJS](https://img.shields.io/badge/NestJS-E0234E?style=flat&logo=nestjs&logoColor=white)](https://nestjs.com/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=flat&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
@@ -13,7 +14,6 @@ A RESTful API for managing movies and users, built with NestJS and TypeScript. U
 
 ## 📋 Table of Contents
 
-- [Overview](#-overview)
 - [Features](#-features)
 - [Tech Stack](#-tech-stack)
 - [Database Schema](#-database-schema)
@@ -21,38 +21,28 @@ A RESTful API for managing movies and users, built with NestJS and TypeScript. U
 - [Environment Variables](#-environment-variables)
 - [API Documentation](#-api-documentation)
 - [Running Tests](#-running-tests)
+- [CI](#-ci)
+- [Roadmap](#-roadmap)
 - [License](#-license)
-
----
-
-## 📖 Overview
-
-Movie Catalog API allows you to:
-
-- **Create and manage movies** with full CRUD operations
-- **Register and manage users** with secure authentication
-- **Assign watched movies to users**, creating a relationship between entities
-- **Authenticate** using JWT with access and refresh tokens
 
 ---
 
 ## ✨ Features
 
-- ✅ Full CRUD for movies and users
-- ✅ JWT authentication with refresh token
-- ✅ Password hashing with bcrypt
-- ✅ Access control and role-based guards
-- ✅ Role-based access control (admin/user)
-- ✅ DTO validation with class-validator and class-transformer
-- ✅ Pagination on list endpoints
-- ✅ Global exception handling
-- ✅ Logging with interceptors
-- ✅ API documentation with Swagger
-- ✅ Health check endpoint
-- ✅ Database seed
+- ✅ CRUD for movies with pagination
+- ✅ User registration, update, deletion and avatar upload (JPEG/PNG, max 3 MB)
+- ✅ JWT authentication (Bearer) with password hashing (bcrypt)
+- ✅ Generic login error and constant-time comparison to avoid user enumeration
+- ✅ Guard that re-checks on every request that the user still exists and is active
+- ✅ DTO validation with class-validator / class-transformer
+- ✅ Global exception filter (including Prisma errors → 404/409)
+- ✅ Request logging with interceptors and Nest `Logger`
+- ✅ Swagger / OpenAPI documentation
+- ✅ Health check with database probe
+- ✅ Idempotent database seed
 - ✅ Unit and E2E tests
-- ✅ Docker support
-- ✅ ESLint + Prettier
+- ✅ Multi-stage Docker image (runs `prisma migrate deploy` on start)
+- ✅ GitHub Actions CI (lint, build, unit, E2E with Postgres, Docker build)
 
 ---
 
@@ -60,29 +50,22 @@ Movie Catalog API allows you to:
 
 | Technology | Purpose |
 |---|---|
-| NestJS | Framework |
+| NestJS 11 | Framework |
 | TypeScript | Language |
-| Prisma | ORM |
-| PostgreSQL | Database |
+| Prisma 7 | ORM and migrations |
+| PostgreSQL 15 | Database |
 | JWT | Authentication |
 | bcrypt | Password hashing |
-| Jest | Testing |
+| Jest + Supertest | Unit and E2E tests |
 | Swagger | API documentation |
-| Docker | Containerization |
-| class-validator | DTO validation |
-| class-transformer | Data transformation |
+| Docker / Compose | Containerization |
+| GitHub Actions | Continuous integration |
 
 ---
 
 ## 🗄 Database Schema
 
-> Entity relationship diagram
-
 ![Database Schema](./docs/images/db-schema.png)
-
-> Beekeeper Studio — database view
-
-![Beekeeper](./docs/images/beekeeper.png)
 
 ---
 
@@ -90,14 +73,14 @@ Movie Catalog API allows you to:
 
 ### Prerequisites
 
-- [Node.js](https://nodejs.org/) >= 20
+- [Node.js](https://nodejs.org/) 24
 - [Docker](https://www.docker.com/) and Docker Compose
 
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/brunocmg/movie-catalog-api.git
-cd movie-catalog-api
+git clone https://github.com/brunocmg/api-rest-filmes.git
+cd api-rest-filmes
 ```
 
 ### 2. Configure environment variables
@@ -108,81 +91,87 @@ cp .env.example .env
 
 Fill in the values in `.env` (see [Environment Variables](#-environment-variables)).
 
-### 3. Start with Docker
+### 3a. Run with Docker (recommended)
 
 ```bash
 docker compose up --build
 ```
 
-The API will be available at `http://localhost:3000`.
+Compose waits for Postgres to be healthy, applies the migrations and starts the API in watch mode at `http://localhost:3000`.
 
-### 4. Run the seed (optional)
+Seed the database (optional):
 
 ```bash
-docker compose exec api npx prisma db seed
+docker compose exec app npx prisma db seed
 ```
-or (whitout docker)
+
+### 3b. Run locally (without Docker for the API)
+
 ```bash
-npx prisma db seed
+docker compose up -d db
+npm install
+npx prisma migrate deploy
+npx prisma db seed   # optional
+npm run start:dev
+```
+
+> When running outside Docker, `DATABASE_URL` must point to `localhost` instead of `db`.
+
+### Production image
+
+```bash
+docker build --target prod -t movie-catalog-api .
+docker run --env-file .env -p 3000:3000 movie-catalog-api
 ```
 
 ---
 
 ## 🔐 Environment Variables
 
-To run this project locally, you will need to add the following environment variables to your `.env` file. You can copy the structure below:
-
 ```env
-# Database Configuration
+# Database
 DB_USER=postgres
 DB_PASSWORD=your_db_password
 DB_NAME=catalog
-DB_HOST=db
-DB_PORT=5432
-DATABASE_URL="postgresql://postgres:your_db_password@db:5432/catalog"
+DATABASE_URL="postgresql://postgres:your_db_password@localhost:5432/catalog"
 
-# JWT Authentication
-JWT_SECRET=your_jwt_secret_key
+# JWT
+JWT_SECRET=generate_a_long_random_value   # e.g. openssl rand -base64 48
 JWT_TOKEN_AUDIENCE=http://localhost:3000
 JWT_TOKEN_ISSUER=http://localhost:3000
-JWT_TTL="30d"
+JWT_TTL="1h"
 
-# Application Settings
-UPLOAD_DIR=./files
-PRISMA_GENERATE=true
+# App
 NODE_ENV=development
 PORT=3000
 ```
+
+For E2E tests, create a `.env.test` with the same JWT variables and a `DATABASE_URL` pointing to a **separate** database — the tests wipe the users table.
 
 ---
 
 ## 📚 API Documentation
 
-Swagger UI is available at:
-
-```
-http://localhost:3000/docs
-```
-
-> Swagger UI preview
+Swagger UI is available at `http://localhost:3000/docs`.
 
 ![Swagger](./docs/images/swagger.png)
 
-### Main endpoints
+### Endpoints
 
 | Method | Endpoint | Description | Auth |
 |---|---|---|---|
-| POST | `/auth` | Login and get tokens | ❌ |
-| GET | `/movies` | List all movies (paginated) | ❌ |
-| POST | `/movies` | Create a movie | ✅ |
+| POST | `/auth` | Login and get an access token | ❌ |
+| GET | `/movies` | List movies (`?limit=&offset=`) | ❌ |
 | GET | `/movies/:id` | Get movie by ID | ❌ |
+| POST | `/movies` | Create a movie | ✅ |
 | PATCH | `/movies/:id` | Update a movie | ✅ |
 | DELETE | `/movies/:id` | Delete a movie | ✅ |
+| POST | `/users` | Register a user | ❌ |
 | GET | `/users/:id` | Get user by ID | ✅ |
-| POST | `/users` | Create a user | ❌ |
-| PATCH | `/users/:id` | Update a user | ✅ |
-| DELETE | `/users/:id` | Delete a user | ✅ |
-| POST | `/users/upload` | Upload user avatar | ✅ |
+| PATCH | `/users/:id` | Update own user | ✅ |
+| DELETE | `/users/:id` | Delete own user | ✅ |
+| POST | `/users/upload` | Upload own avatar | ✅ |
+| GET | `/files/:name` | Serve uploaded avatars | ❌ |
 | GET | `/health` | Health check | ❌ |
 
 ---
@@ -192,31 +181,64 @@ http://localhost:3000/docs
 ```
 src/
 ├── main.ts
-├── app/
-├── auth/
+├── app/          # root module
+├── auth/         # login, JWT config, guard, hashing
 ├── users/
 ├── movies/
-├── prisma/
+├── prisma/       # PrismaService
 ├── health/
-└── common/
-    ├── filters/
-    ├── guards/
-    ├── interceptors/
-    └── middlewares/
+└── common/       # filters, guards, interceptors, middlewares
+prisma/
+├── schema.prisma
+├── migrations/
+└── seed.ts
+test/             # E2E tests and Jest setup
 ```
+
+---
 
 ## 🧪 Running Tests
 
 ```bash
 # Unit tests
-npm run test
+npm test
 
-# E2E tests
+# E2E tests (needs a running Postgres; migrations are applied automatically)
 npm run test:e2e
 
 # Coverage
 npm run test:cov
 ```
+
+---
+
+## 🔄 CI
+
+Every pull request and every push to `develop`/`main` runs on GitHub Actions:
+
+1. `npm ci` + `prisma generate`
+2. ESLint
+3. Build
+4. Unit tests
+5. E2E tests against a Postgres service container
+6. Production Docker image build
+
+---
+
+## 🗺 Roadmap
+
+Highlights (full branch-by-branch plan in [docs/ROADMAP.md](./docs/ROADMAP.md)):
+
+- [ ] Role-based access control (`USER` / `ADMIN`)
+- [ ] Refresh tokens with rotation and logout
+- [ ] Structured logging with request id and continuous deployment
+- [ ] Series, seasons and episodes (genres as a proper relation)
+- [ ] Watch history, favorites and watchlist
+- [ ] TMDB metadata import
+- [ ] Search, filters and sorting
+- [ ] Ratings, reviews, stats and recommendations
+- [ ] Cloud storage, caching and metrics
+- [ ] Web front end
 
 ---
 

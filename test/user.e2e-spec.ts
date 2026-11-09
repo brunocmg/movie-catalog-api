@@ -5,33 +5,52 @@ import { App } from 'supertest/types';
 import { MoviesModule } from '../src/movies/movies.module';
 import { UsersModule } from '../src/users/users.module';
 import { AuthModule } from '../src/auth/auth.module';
-import * as dotenv from 'dotenv';
 import { PrismaService } from '../src/prisma/prisma.service';
-import { execSync } from 'child_process';
 import { ConfigModule } from '@nestjs/config';
 
-dotenv.config({ path: '.env.test' });
+interface UserBody {
+  id: string;
+  name: string;
+  email: string;
+}
+
+interface AuthBody {
+  id: string;
+  token: string;
+}
+
+interface MessageBody {
+  message: string;
+}
 
 describe('Users (e2e)', () => {
   let app: INestApplication<App>;
   let prismaService: PrismaService;
 
-  beforeAll(() => {
-    execSync(
-      'cross-env DATABASE_URL=postgresql://postgres:12345@localhost:5432/catalog npx prisma migrate reset --force',
-    );
-  });
+  const createAndLogin = async (user: {
+    name: string;
+    email: string;
+    password: string;
+  }): Promise<{ created: UserBody; auth: AuthBody }> => {
+    const createResponse = await request(app.getHttpServer())
+      .post('/users')
+      .send(user)
+      .expect(201);
+
+    const authResponse = await request(app.getHttpServer())
+      .post('/auth')
+      .send({ email: user.email, password: user.password });
+
+    return {
+      created: createResponse.body as UserBody,
+      auth: authResponse.body as AuthBody,
+    };
+  };
 
   beforeEach(async () => {
-    execSync(
-      'cross-env DATABASE_URL=postgresql://postgres:12345@localhost:5432/catalog npx prisma migrate reset --force',
-    );
-
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [
-        ConfigModule.forRoot({
-          envFilePath: '.env.test',
-        }),
+        ConfigModule.forRoot({ ignoreEnvFile: true }),
         MoviesModule,
         UsersModule,
         AuthModule,
@@ -49,9 +68,6 @@ describe('Users (e2e)', () => {
     prismaService = moduleFixture.get<PrismaService>(PrismaService);
 
     await app.init();
-  });
-
-  afterEach(async () => {
     await prismaService.user.deleteMany();
   });
 
@@ -72,10 +88,13 @@ describe('Users (e2e)', () => {
         .send(createUserDto)
         .expect(201);
 
-      expect(response.body).toEqual({
-        id: response.body.id,
+      const body = response.body as UserBody;
+
+      expect(body).toEqual({
+        id: body.id,
         name: 'Bruno Gomes',
         email: 'bruno@teste.com',
+        watchedMovies: [],
       });
     });
 
@@ -103,26 +122,21 @@ describe('Users (e2e)', () => {
         name: 'Ana Caroline',
       };
 
-      const user = await request(app.getHttpServer())
-        .post('/users')
-        .send(createUserDto);
+      const { auth } = await createAndLogin(createUserDto);
 
-      const auth = await request(app.getHttpServer()).post('/auth').send({
-        email: createUserDto.email,
-        password: createUserDto.password,
-      });
-
-      expect(auth.body.token).toEqual(auth.body.token);
+      expect(auth.token).toBeDefined();
 
       const response = await request(app.getHttpServer())
-        .patch(`/users/${auth.body.id}`)
-        .set('Authorization', `Bearer ${auth.body.token}`)
-        .send(updateUserDto);
+        .patch(`/users/${auth.id}`)
+        .set('Authorization', `Bearer ${auth.token}`)
+        .send(updateUserDto)
+        .expect(200);
 
-      expect(response.body).toEqual({
-        id: auth.body.id,
+      expect(response.body as UserBody).toEqual({
+        id: auth.id,
         name: updateUserDto.name,
         email: createUserDto.email,
+        watchedMovies: [],
       });
     });
 
@@ -133,21 +147,13 @@ describe('Users (e2e)', () => {
         password: '123123',
       };
 
-      const user = await request(app.getHttpServer())
-        .post('/users')
-        .send(createUserDto)
-        .expect(201);
-
-      const auth = await request(app.getHttpServer()).post('/auth').send({
-        email: createUserDto.email,
-        password: createUserDto.password,
-      });
+      const { created, auth } = await createAndLogin(createUserDto);
 
       const response = await request(app.getHttpServer())
-        .delete(`/users/${user.body.id}`)
-        .set('Authorization', `Bearer ${auth.body.token}`);
+        .delete(`/users/${created.id}`)
+        .set('Authorization', `Bearer ${auth.token}`);
 
-      expect(response.body.message).toEqual(
+      expect((response.body as MessageBody).message).toEqual(
         'Usuário foi deletado com sucesso!',
       );
     });
