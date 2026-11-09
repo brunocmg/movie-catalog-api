@@ -75,7 +75,7 @@ describe('Users (e2e)', () => {
     });
   });
 
-  describe('POST /auth', () => {
+  describe('POST /auth/login', () => {
     it('logs in regardless of the e-mail casing', async () => {
       await request(app.getHttpServer())
         .post('/users')
@@ -83,11 +83,11 @@ describe('Users (e2e)', () => {
         .expect(201);
 
       const res = await request(app.getHttpServer())
-        .post('/auth')
+        .post('/auth/login')
         .send({ email: 'ANA@Teste.com', password: '123123' })
-        .expect(201);
+        .expect(200);
 
-      expect(res.body).toHaveProperty('token');
+      expect(res.body).toHaveProperty('accessToken');
     });
 
     it('rejects a wrong password with 401', async () => {
@@ -98,7 +98,7 @@ describe('Users (e2e)', () => {
       });
 
       await request(app.getHttpServer())
-        .post('/auth')
+        .post('/auth/login')
         .send({ email: 'ana@teste.com', password: 'wrong-pass' })
         .expect(401);
     });

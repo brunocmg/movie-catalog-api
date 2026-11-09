@@ -23,7 +23,7 @@ describe('Security (e2e)', () => {
     it(`blocks login after ${AUTH_LIMIT} attempts per window with 429`, async () => {
       const attempt = () =>
         request(app.getHttpServer())
-          .post('/auth')
+          .post('/auth/login')
           .send({ email: 'nobody@teste.com', password: 'wrong-pass' });
 
       for (let i = 0; i < AUTH_LIMIT; i++) {

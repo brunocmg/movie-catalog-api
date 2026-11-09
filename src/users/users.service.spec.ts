@@ -11,6 +11,7 @@ import * as fs from 'node:fs/promises';
 import { UsersService } from './users.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { HashingServiceProtocol } from '../auth/hash/hashing.service';
+import { RefreshTokenService } from '../auth/refresh-token.service';
 import { AuthenticatedUser } from '../auth/types/authenticated-user';
 import { CreateUserDto } from './dto/create-user.dto';
 
@@ -41,6 +42,7 @@ const prismaMock = {
 };
 
 const hashingMock = { hash: jest.fn() };
+const refreshMock = { revokeAllForUser: jest.fn() };
 
 const prismaError = (code: string) =>
   Object.assign(new Error(code), {
@@ -107,6 +109,7 @@ describe('UsersService', () => {
         UsersService,
         { provide: PrismaService, useValue: prismaMock },
         { provide: HashingServiceProtocol, useValue: hashingMock },
+        { provide: RefreshTokenService, useValue: refreshMock },
       ],
     }).compile();
 
@@ -237,6 +240,16 @@ describe('UsersService', () => {
         select: userSelect,
       });
       expect(result).toEqual({ ...userResponse, name: 'New' });
+      // a new password ends every session
+      expect(refreshMock.revokeAllForUser).toHaveBeenCalledWith(1);
+    });
+
+    it('keeps the sessions when only the name changes', async () => {
+      prismaMock.user.update.mockResolvedValue(userFromDb);
+
+      await service.update(1, { name: 'New' }, asUser(1));
+
+      expect(refreshMock.revokeAllForUser).not.toHaveBeenCalled();
     });
 
     it('throws 404 when the user no longer exists', async () => {

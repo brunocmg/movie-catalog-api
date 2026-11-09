@@ -22,7 +22,7 @@ export async function createTestApp(): Promise<INestApplication<App>> {
 export async function resetDatabase(app: INestApplication): Promise<void> {
   const prisma = app.get(PrismaService);
   await prisma.$executeRawUnsafe(
-    'TRUNCATE TABLE "watched_movies", "users", "movies" RESTART IDENTITY CASCADE',
+    'TRUNCATE TABLE "refresh_tokens", "watched_movies", "users", "movies" RESTART IDENTITY CASCADE',
   );
 }
 
@@ -36,7 +36,7 @@ export async function registerAdminAndLogin(
     email: 'admin@teste.com',
     password: 'admin123',
   },
-): Promise<{ id: number; token: string }> {
+): Promise<LoggedIn> {
   const auth = await registerAndLogin(app, user);
   await setRole(app, auth.id, Role.ADMIN);
   return auth;
@@ -53,13 +53,30 @@ export async function setRole(
 export async function registerAndLogin(
   app: INestApplication<App>,
   user: TestUser,
-): Promise<{ id: number; token: string }> {
+): Promise<LoggedIn> {
   await request(app.getHttpServer()).post('/users').send(user).expect(201);
+  return login(app, user);
+}
 
+export type LoggedIn = { id: number; token: string; refreshToken: string };
+
+export async function login(
+  app: INestApplication<App>,
+  user: Pick<TestUser, 'email' | 'password'>,
+): Promise<LoggedIn> {
   const res = await request(app.getHttpServer())
-    .post('/auth')
+    .post('/auth/login')
     .send({ email: user.email, password: user.password })
-    .expect(201);
+    .expect(200);
 
-  return res.body as { id: number; token: string };
+  const body = res.body as {
+    user: { id: number };
+    accessToken: string;
+    refreshToken: string;
+  };
+  return {
+    id: body.user.id,
+    token: body.accessToken,
+    refreshToken: body.refreshToken,
+  };
 }
