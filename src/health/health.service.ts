@@ -1,10 +1,20 @@
 import { Injectable, ServiceUnavailableException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { EnvironmentVariables } from '../config/env.validation';
 import { PrismaService } from '../prisma/prisma.service';
 import { HealthResponseDto } from './dto/health-response.dto';
 
 @Injectable()
 export class HealthService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly commit: string;
+
+  constructor(
+    private readonly prisma: PrismaService,
+    config: ConfigService<EnvironmentVariables, true>,
+  ) {
+    this.commit =
+      config.get('RENDER_GIT_COMMIT', { infer: true })?.slice(0, 7) ?? 'local';
+  }
 
   async check(): Promise<HealthResponseDto> {
     try {
@@ -14,6 +24,7 @@ export class HealthService {
         status: 'ok',
         timestamp: new Date().toISOString(),
         uptime: process.uptime(),
+        commit: this.commit,
         database: {
           status: 'up',
         },
@@ -23,6 +34,7 @@ export class HealthService {
         status: 'error',
         timestamp: new Date().toISOString(),
         uptime: process.uptime(),
+        commit: this.commit,
         database: {
           status: 'down',
         },

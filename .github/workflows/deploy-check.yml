@@ -1,0 +1,43 @@
+name: Deploy check
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-check
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      APP_URL: ${{ vars.APP_URL || 'https://movie-catalog-api-54m7.onrender.com' }}
+      EXPECTED: ${{ github.event.workflow_run.head_sha }}
+    steps:
+      - name: Wait for Render to serve this commit
+        run: |
+          expected="${EXPECTED:0:7}"
+          for attempt in $(seq 1 60); do
+            commit=$(curl -fsS -m 30 "$APP_URL/health" | jq -r '.commit' || true)
+            echo "attempt $attempt: live=$commit expected=$expected"
+            if [ "$commit" = "$expected" ]; then exit 0; fi
+            sleep 15
+          done
+          echo "::error::$APP_URL is not serving $expected after 15 minutes"
+          exit 1
+
+      - name: Smoke test
+        run: |
+          curl -fsS -m 30 "$APP_URL/health" | jq -e '.database.status == "up"'
+          curl -fsS -m 30 -o /dev/null "$APP_URL/docs"
+          curl -fsS -m 30 "$APP_URL/movies?limit=1" | jq -e '.meta.total >= 0'
+          status=$(curl -s -m 30 -o /dev/null -w '%{http_code}' "$APP_URL/users")
+          test "$status" = "401"
