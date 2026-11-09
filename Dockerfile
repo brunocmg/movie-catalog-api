@@ -9,6 +9,10 @@ COPY package.json package-lock.json ./
 RUN npm ci
 
 FROM deps AS dev
+# `nest start --watch` uses `ps` to stop the old process on reload
+RUN apt-get update -y \
+    && apt-get install -y --no-install-recommends procps \
+    && rm -rf /var/lib/apt/lists/*
 ARG DATABASE_URL=postgresql://postgres:postgres@localhost:5432/postgres
 COPY . .
 RUN npx prisma generate
