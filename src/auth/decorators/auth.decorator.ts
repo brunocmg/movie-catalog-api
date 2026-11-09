@@ -10,12 +10,6 @@ import { RolesGuard } from '../guards/roles.guard';
 import { Roles } from './roles.decorator';
 import { ErrorResponseDto } from '../../common/dto/error-response.dto';
 
-/**
- * Requires a valid bearer token and, when roles are given, one of them.
- *
- *   @Auth()            any authenticated user
- *   @Auth(Role.ADMIN)  admins only
- */
 export function Auth(...roles: Role[]) {
   const decorators = [
     UseGuards(AuthTokenGuard, RolesGuard),

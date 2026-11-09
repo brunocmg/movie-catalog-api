@@ -13,11 +13,6 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { PayloadTokenDto } from '../dto/payload-token.dto';
 import { AuthenticatedRequest } from '../types/authenticated-user';
 
-/**
- * Verifies the bearer token, then loads the user from the database and puts
- * it in `request.user`. A deleted or deactivated user is rejected even with a
- * token that has not expired yet, and the role is always the current one.
- */
 @Injectable()
 export class AuthTokenGuard implements CanActivate {
   private readonly logger = new Logger(AuthTokenGuard.name);

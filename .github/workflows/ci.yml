@@ -44,7 +44,6 @@ jobs:
       - run: npm run lint:ci
       - run: npm run build
       - run: npm test -- --ci
-      # o globalSetup do e2e aplica as migrations (prisma migrate deploy)
       - run: npm run test:e2e -- --ci
 
   docker:

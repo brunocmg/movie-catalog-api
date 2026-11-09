@@ -7,10 +7,6 @@ import { EnvironmentVariables } from '../../config/env.validation';
 const STRICT_THROTTLE_KEY = 'throttle:strict';
 const reflector = new Reflector();
 
-/**
- * Applies the stricter `auth` limit (THROTTLE_AUTH_LIMIT per window, per IP)
- * on top of the global one. Meant for brute-force targets such as login.
- */
 export const StrictThrottle = () => SetMetadata(STRICT_THROTTLE_KEY, true);
 
 const isStrict = (context: ExecutionContext) =>

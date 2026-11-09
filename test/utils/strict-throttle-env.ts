@@ -1,5 +1,4 @@
-// Imported before the app so ConfigModule validates these values.
-// Must be the first import of the spec that uses it.
+// must be the first import of the spec: read when AppModule loads
 export const AUTH_LIMIT = 3;
 
 process.env.THROTTLE_AUTH_LIMIT = String(AUTH_LIMIT);

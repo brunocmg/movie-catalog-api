@@ -2,11 +2,7 @@ import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
 
 const MAX_INT4 = 2_147_483_647;
 
-/**
- * Parses a route id into a positive Postgres `integer`.
- * ParseIntPipe alone lets values like 99999999999 through, which then fail
- * inside the database driver as a 500.
- */
+// ParseIntPipe accepts values beyond int4, which then fail in the driver
 @Injectable()
 export class ParseIdPipe implements PipeTransform<string, number> {
   transform(value: string): number {

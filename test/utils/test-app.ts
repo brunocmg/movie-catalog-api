@@ -18,7 +18,6 @@ export async function createTestApp(): Promise<INestApplication<App>> {
   return app;
 }
 
-/** Wipes every table between tests (the test database is disposable). */
 export async function resetDatabase(app: INestApplication): Promise<void> {
   const prisma = app.get(PrismaService);
   await prisma.$executeRawUnsafe(
@@ -28,7 +27,6 @@ export async function resetDatabase(app: INestApplication): Promise<void> {
 
 export type TestUser = { name: string; email: string; password: string };
 
-/** Registers a user, promotes it straight in the database and logs in. */
 export async function registerAdminAndLogin(
   app: INestApplication<App>,
   user: TestUser = {

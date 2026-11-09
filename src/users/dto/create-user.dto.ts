@@ -32,8 +32,7 @@ export class CreateUserDto {
   })
   @IsString()
   @MinLength(6)
-  // bcrypt ignores everything after 72 bytes
-  @MaxLength(72)
+  @MaxLength(72) // bcrypt ignores everything after 72 bytes
   @IsNotEmpty()
   password: string;
 }

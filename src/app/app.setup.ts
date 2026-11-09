@@ -5,17 +5,12 @@ import helmet from 'helmet';
 import { AllExceptionsFilter } from '../common/filters/all-exceptions.filter';
 import { EnvironmentVariables, NodeEnv } from '../config/env.validation';
 
-/**
- * HTTP hardening, global pipes and filters shared by main.ts and the E2E
- * tests, so the tests exercise the same request pipeline as production.
- */
 export function setupApp(app: INestApplication): INestApplication {
   const config =
     app.get<ConfigService<EnvironmentVariables, true>>(ConfigService);
 
-  // Behind Render/Nginx the client IP comes from X-Forwarded-For. Rate
-  // limiting would otherwise see every request as coming from the proxy.
   const express = app.getHttpAdapter().getInstance() as Express;
+  // real client IP for rate limiting behind Render
   express.set('trust proxy', config.get('TRUST_PROXY', { infer: true }));
   express.disable('x-powered-by');
 
@@ -26,9 +21,7 @@ export function setupApp(app: INestApplication): INestApplication {
     helmet({
       contentSecurityPolicy: {
         directives: {
-          // Only upgrade to HTTPS where it exists. Over plain HTTP it would
-          // break Swagger UI assets.
-          upgradeInsecureRequests: isProduction ? [] : null,
+          upgradeInsecureRequests: isProduction ? [] : null, // breaks Swagger over plain http
         },
       },
     }),
@@ -50,12 +43,6 @@ export function setupApp(app: INestApplication): INestApplication {
   return app;
 }
 
-/**
- * CORS_ORIGINS="*"               -> any origin
- * CORS_ORIGINS="https://a,https://b" -> only those
- * unset                          -> any origin outside production,
- *                                   CORS disabled in production
- */
 export function corsOrigin(
   value: string | undefined,
   nodeEnv: NodeEnv,

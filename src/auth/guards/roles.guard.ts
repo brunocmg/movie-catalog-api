@@ -9,10 +9,6 @@ import { Role } from '@prisma/client';
 import { ROLES_KEY } from '../decorators/roles.decorator';
 import { AuthenticatedRequest } from '../types/authenticated-user';
 
-/**
- * Allows the request when the route has no @Roles() or when the user has one
- * of the listed roles. Must run after AuthTokenGuard, which loads the user.
- */
 @Injectable()
 export class RolesGuard implements CanActivate {
   constructor(private readonly reflector: Reflector) {}

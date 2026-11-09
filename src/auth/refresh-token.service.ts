@@ -13,17 +13,6 @@ const INVALID = 'Invalid or expired refresh token';
 
 export type IssuedRefreshToken = { token: string; expiresAt: Date };
 
-/**
- * Opaque refresh tokens with rotation and reuse detection.
- *
- * - The token is 32 random bytes; only its SHA-256 hash is stored, so a
- *   database leak does not expose usable tokens. A fast hash is fine here
- *   because the token has 256 bits of entropy (unlike a password).
- * - Every login starts a family. Every refresh revokes the presented token
- *   and issues a new one in the same family.
- * - Presenting a token that was already rotated means someone else used it
- *   first: the whole family is revoked and both parties must log in again.
- */
 @Injectable()
 export class RefreshTokenService {
   private readonly logger = new Logger(RefreshTokenService.name);
@@ -34,9 +23,7 @@ export class RefreshTokenService {
     private readonly config: ConfigType<typeof jwtConfig>,
   ) {}
 
-  /** Starts a new family (login). */
   async issue(userId: number): Promise<IssuedRefreshToken> {
-    // Housekeeping: drop this user's expired tokens.
     await this.prisma.refreshToken.deleteMany({
       where: { userId, expiresAt: { lt: new Date() } },
     });
@@ -44,10 +31,6 @@ export class RefreshTokenService {
     return this.create(userId, randomUUID());
   }
 
-  /**
-   * Validates and rotates a refresh token. Returns the owner and a new token.
-   * Throws 401 for unknown, expired, revoked or reused tokens.
-   */
   async rotate(
     token: string,
   ): Promise<{ userId: number; refreshToken: IssuedRefreshToken }> {
@@ -69,7 +52,7 @@ export class RefreshTokenService {
       throw new UnauthorizedException(INVALID);
     }
 
-    // Atomic: only one of two concurrent requests with the same token wins.
+    // atomic: of two concurrent refreshes with the same token, only one wins
     const { count } = await this.prisma.refreshToken.updateMany({
       where: { id: stored.id, revokedAt: null },
       data: { revokedAt: new Date() },
@@ -86,7 +69,6 @@ export class RefreshTokenService {
     };
   }
 
-  /** Logout: revokes the token's family. Unknown tokens are ignored. */
   async revoke(token: string): Promise<void> {
     const stored = await this.prisma.refreshToken.findUnique({
       where: { tokenHash: hash(token) },
@@ -96,7 +78,6 @@ export class RefreshTokenService {
     if (stored) await this.revokeFamily(stored.familyId);
   }
 
-  /** Logout everywhere, also used when the password changes. */
   async revokeAllForUser(userId: number): Promise<void> {
     await this.prisma.refreshToken.updateMany({
       where: { userId, revokedAt: null },

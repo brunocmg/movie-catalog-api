@@ -1,7 +1,3 @@
-/**
- * Prisma error codes the API handles explicitly.
- * https://www.prisma.io/docs/orm/reference/error-reference
- */
 export const PrismaErrorCode = {
   UniqueConstraint: 'P2002',
   ForeignKeyConstraint: 'P2003',
@@ -14,10 +10,6 @@ export type PrismaKnownError = {
   meta?: Record<string, unknown>;
 };
 
-/**
- * Structural check instead of `instanceof`, so it keeps working even if the
- * error comes from a different copy of the Prisma client.
- */
 export function isPrismaKnownError(
   error: unknown,
   code?: string,

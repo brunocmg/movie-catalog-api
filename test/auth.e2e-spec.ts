@@ -67,7 +67,6 @@ describe('Auth sessions (e2e)', () => {
 
       expect(tokens.refreshToken).not.toBe(ana.refreshToken);
       await me(tokens.accessToken).expect(200);
-      // the new refresh token can be used in turn
       await refresh(tokens.refreshToken).expect(200);
     });
 
@@ -82,14 +81,11 @@ describe('Auth sessions (e2e)', () => {
     it('detects reuse and revokes the whole session', async () => {
       const ana = await registerAndLogin(app, ANA);
 
-      // the legitimate client rotates the token
       const rotated = (await refresh(ana.refreshToken).expect(200))
         .body as Tokens;
 
-      // an attacker replays the old one: rejected...
       await refresh(ana.refreshToken).expect(401);
 
-      // ...and the legitimate client's current token is revoked too
       await refresh(rotated.refreshToken).expect(401);
     });
 

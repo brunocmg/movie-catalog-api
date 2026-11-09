@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { APP_GUARD } from '@nestjs/core';
+import { LoggerModule } from 'nestjs-pino';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { join } from 'node:path';
@@ -8,7 +9,7 @@ import { MoviesModule } from '../movies/movies.module';
 import { UsersModule } from '../users/users.module';
 import { AuthModule } from '../auth/auth.module';
 import { HealthModule } from '../health/health.module';
-import { LoggerInterceptor } from '../common/interceptors/logger.interceptor';
+import { loggerOptions } from '../common/logging/logger.config';
 import { throttlerOptions } from '../common/throttling/throttling';
 import { validateEnv } from '../config/env.validation';
 
@@ -18,10 +19,13 @@ const nodeEnv = process.env.NODE_ENV ?? 'development';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      // Tests read only .env.test so they never touch the dev database.
       envFilePath:
         nodeEnv === 'test' ? ['.env.test'] : [`.env.${nodeEnv}`, '.env'],
       validate: validateEnv,
+    }),
+    LoggerModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: loggerOptions,
     }),
     ThrottlerModule.forRootAsync({
       inject: [ConfigService],
@@ -36,9 +40,6 @@ const nodeEnv = process.env.NODE_ENV ?? 'development';
       serveRoot: '/files',
     }),
   ],
-  providers: [
-    { provide: APP_GUARD, useClass: ThrottlerGuard },
-    { provide: APP_INTERCEPTOR, useClass: LoggerInterceptor },
-  ],
+  providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
 export class AppModule {}

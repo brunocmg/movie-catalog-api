@@ -33,7 +33,6 @@ enum Role {
 model User {
   id           Int      @id @default(autoincrement())
   name         String
-  /// Always stored lower-cased (normalized in the DTOs).
   email        String   @unique
   passwordHash String   @map("password_hash")
   role         Role     @default(USER)
@@ -61,9 +60,6 @@ model WatchedMovie {
   @@map("watched_movies")
 }
 
-/// Opaque refresh tokens, stored as SHA-256 hashes. Each login starts a
-/// family; every refresh rotates the token inside the same family. Reusing a
-/// rotated token revokes the whole family (likely theft).
 model RefreshToken {
   id        Int       @id @default(autoincrement())
   userId    Int       @map("user_id")

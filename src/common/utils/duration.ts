@@ -10,10 +10,7 @@ const UNIT_MS = {
 
 export const DURATION_PATTERN = /^(\d+)\s*(ms|s|m|h|d|w|y)?$/i;
 
-/**
- * Converts "15m", "7d", "1h"... to milliseconds. A bare number means
- * SECONDS, unlike jsonwebtoken, which reads the string "900" as 900 ms.
- */
+// a bare number means seconds (jsonwebtoken would read "900" as 900 ms)
 export function parseDurationMs(value: string): number {
   const match = DURATION_PATTERN.exec(value.trim());
   if (!match) throw new Error(`Invalid duration: "${value}"`);
