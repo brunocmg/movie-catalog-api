@@ -12,6 +12,7 @@ import {
   MinLength,
   validateSync,
 } from 'class-validator';
+import { DURATION_PATTERN } from '../common/utils/duration';
 
 export enum NodeEnv {
   Development = 'development',
@@ -66,10 +67,17 @@ export class EnvironmentVariables {
   @IsNotEmpty()
   JWT_TOKEN_ISSUER: string;
 
-  @Matches(/^\d+\s*(ms|s|m|h|d|w|y)?$/i, {
+  /** Access token lifetime. A bare number means seconds. */
+  @Matches(DURATION_PATTERN, {
     message: 'JWT_TTL must be a duration such as 900, 15m, 1h or 7d',
   })
   JWT_TTL: string;
+
+  /** Refresh token lifetime (the token is rotated on every use). */
+  @Matches(DURATION_PATTERN, {
+    message: 'JWT_REFRESH_TTL must be a duration such as 7d or 30d',
+  })
+  JWT_REFRESH_TTL: string = '7d';
 
   /** Comma-separated list of allowed origins, or `*`. Empty disables CORS. */
   @IsOptional()

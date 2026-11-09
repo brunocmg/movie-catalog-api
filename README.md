@@ -31,7 +31,8 @@ A RESTful API for managing a movie catalog and its users, built with NestJS and 
 
 - ✅ CRUD for movies with pagination (unique per name + year), writes restricted to admins
 - ✅ User registration, update, deletion and avatar upload (JPEG/PNG, max 3 MB)
-- ✅ JWT authentication (Bearer) with password hashing (bcrypt)
+- ✅ JWT access tokens (15 min) + opaque refresh tokens with rotation, reuse detection and logout
+- ✅ Password hashing with bcrypt
 - ✅ Role-based access control (`USER` / `ADMIN`) with `@Auth()` / `@Roles()` and ownership checks
 - ✅ Case-insensitive e-mails (normalized to lower case)
 - ✅ Audit timestamps (`created_at` / `updated_at`) and snake_case columns
@@ -74,6 +75,7 @@ A RESTful API for managing a movie catalog and its users, built with NestJS and 
 erDiagram
   users ||--o{ watched_movies : watches
   movies ||--o{ watched_movies : "watched by"
+  users ||--o{ refresh_tokens : "has sessions"
   users {
     int id PK
     text name
@@ -98,6 +100,15 @@ erDiagram
     int user_id PK,FK
     int movie_id PK,FK
     timestamp watched_at
+  }
+  refresh_tokens {
+    int id PK
+    int user_id FK
+    text token_hash UK "sha-256"
+    uuid family_id
+    timestamp expires_at
+    timestamp revoked_at
+    timestamp created_at
   }
 ```
 
@@ -171,7 +182,8 @@ All variables are validated when the app starts ([env.validation.ts](./src/confi
 | `DATABASE_URL` | ✅ | | `postgresql://` connection string |
 | `JWT_SECRET` | ✅ | | At least 32 characters (`openssl rand -base64 48`) |
 | `JWT_TOKEN_AUDIENCE` / `JWT_TOKEN_ISSUER` | ✅ | | JWT `aud` / `iss` claims |
-| `JWT_TTL` | ✅ | | Token lifetime: `900`, `15m`, `1h`, `7d` |
+| `JWT_TTL` | ✅ | | Access token lifetime: `900` (seconds), `15m`, `1h` |
+| `JWT_REFRESH_TTL` | | `7d` | Refresh token lifetime |
 | `NODE_ENV` | | `development` | `development`, `production` or `test` |
 | `PORT` | | `3000` | HTTP port |
 | `SWAGGER_ENABLED` | | `true` | Serve the docs at `/docs` |
@@ -199,7 +211,10 @@ Access: 🌐 public · 👤 any authenticated user · 🙋 own account only · �
 
 | Method | Endpoint | Description | Access |
 |---|---|---|---|
-| POST | `/auth` | Login and get an access token | 🌐 |
+| POST | `/auth/login` | Log in: access token + refresh token | 🌐 |
+| POST | `/auth/refresh` | New tokens for a refresh token (rotated) | 🌐 |
+| POST | `/auth/logout` | Revoke the session of a refresh token (`204`) | 🌐 |
+| POST | `/auth/logout-all` | Revoke every session of the user (`204`) | 👤 |
 | GET | `/movies` | List movies (`?limit=&offset=`, max 100) | 🌐 |
 | GET | `/movies/:id` | Get movie by ID | 🌐 |
 | POST | `/movies` | Create a movie | 🛡️ |
@@ -215,6 +230,29 @@ Access: 🌐 public · 👤 any authenticated user · 🙋 own account only · �
 | PATCH | `/me` | Update own name/password | 👤 |
 | GET | `/files/:name` | Serve uploaded avatars | 🌐 |
 | GET | `/health` | Health check | 🌐 |
+
+### Authentication flow
+
+1. `POST /auth/login` returns a short-lived **access token** (JWT, `Authorization: Bearer ...`) and a **refresh token**.
+2. When the access token expires, `POST /auth/refresh` with the refresh token returns a new pair. The old refresh token stops working (**rotation**).
+3. Presenting a refresh token that was already used means it was copied: the whole session is revoked (**reuse detection**), and both the attacker and the user must log in again. Other sessions stay alive.
+4. `POST /auth/logout` ends one session; `POST /auth/logout-all` and password changes end all of them.
+
+Refresh tokens are 256-bit random values stored only as SHA-256 hashes, so a database leak does not expose usable sessions.
+
+```mermaid
+sequenceDiagram
+  participant C as Client
+  participant A as API
+  C->>A: POST /auth/login
+  A-->>C: accessToken (15m) + refreshToken R1
+  C->>A: GET /me (Bearer accessToken)
+  Note over C,A: access token expires
+  C->>A: POST /auth/refresh { R1 }
+  A-->>C: new accessToken + R2 (R1 revoked)
+  C->>A: POST /auth/refresh { R1 } (replayed)
+  A-->>C: 401, and R2 is revoked too
+```
 
 ### Roles
 

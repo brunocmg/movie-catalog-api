@@ -11,6 +11,7 @@ import * as fs from 'node:fs/promises';
 import { PrismaService } from '../prisma/prisma.service';
 import { isPrismaKnownError, PrismaErrorCode } from '../prisma/prisma-errors';
 import { HashingServiceProtocol } from '../auth/hash/hashing.service';
+import { RefreshTokenService } from '../auth/refresh-token.service';
 import { AuthenticatedUser } from '../auth/types/authenticated-user';
 import { PaginationDto } from '../common/dto/pagination.dto';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -60,6 +61,7 @@ export class UsersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly hashingService: HashingServiceProtocol,
+    private readonly refreshTokens: RefreshTokenService,
   ) {}
 
   async findAll(pagination: PaginationDto): Promise<PaginatedUsersDto> {
@@ -143,16 +145,21 @@ export class UsersService {
       );
     }
 
+    let user: SelectedUser;
     try {
-      const user = await this.prisma.user.update({
+      user = await this.prisma.user.update({
         where: { id },
         data,
         select: userSelect,
       });
-      return toResponse(user);
     } catch (err) {
       throw this.notFoundOr(err);
     }
+
+    // A new password ends every session: stolen refresh tokens stop working.
+    if (data.passwordHash) await this.refreshTokens.revokeAllForUser(id);
+
+    return toResponse(user);
   }
 
   /** Owners can delete their own account; admins can delete any account. */
