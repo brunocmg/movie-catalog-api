@@ -19,18 +19,11 @@ export type ErrorResponseBody = {
   message: string;
   path: string;
   timestamp: string;
+  requestId?: string;
 };
 
 type ResolvedError = { status: number; message: string };
 
-/**
- * Turns every exception into the same JSON shape.
- *
- * - HttpException: status and message are kept.
- * - Known Prisma errors (unique, FK, not found): mapped to 409/404 with a
- *   generic message. Driver details never reach the client.
- * - Anything else: 500 with a generic message, logged with the stack trace.
- */
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
   private readonly logger = new Logger(AllExceptionsFilter.name);
@@ -38,7 +31,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
-    const request = ctx.getRequest<Request>();
+    const request = ctx.getRequest<Request & { id?: string }>();
 
     const { status, message } = this.resolve(exception);
     this.log(exception, status, request);
@@ -49,6 +42,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
       message,
       path: request.url,
       timestamp: new Date().toISOString(),
+      requestId: request.id,
     };
 
     response.status(status).json(body);
@@ -99,8 +93,6 @@ export class AllExceptionsFilter implements ExceptionFilter {
       return;
     }
 
-    // Prisma errors that became 4xx usually mean a missing explicit check in a
-    // service, so they are worth a warning. Regular 4xx are expected traffic.
     if (isPrismaKnownError(exception)) {
       this.logger.warn(`${route} -> ${status} (prisma ${exception.code})`);
     }

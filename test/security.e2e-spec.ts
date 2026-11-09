@@ -53,6 +53,45 @@ describe('Security (e2e)', () => {
     });
   });
 
+  describe('request id', () => {
+    const UUID =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+    it('generates one per request', async () => {
+      const a = await request(app.getHttpServer()).get('/movies');
+      const b = await request(app.getHttpServer()).get('/movies');
+
+      expect(a.headers['x-request-id']).toMatch(UUID);
+      expect(b.headers['x-request-id']).not.toBe(a.headers['x-request-id']);
+    });
+
+    it('keeps a safe id sent by the client or a proxy', async () => {
+      const res = await request(app.getHttpServer())
+        .get('/movies')
+        .set('X-Request-Id', 'trace-abc_123');
+
+      expect(res.headers['x-request-id']).toBe('trace-abc_123');
+    });
+
+    it('replaces an unsafe id', async () => {
+      const res = await request(app.getHttpServer())
+        .get('/movies')
+        .set('X-Request-Id', 'x'.repeat(65));
+
+      expect(res.headers['x-request-id']).toMatch(UUID);
+    });
+
+    it('returns the same id in error bodies', async () => {
+      const res = await request(app.getHttpServer())
+        .get('/movies/999')
+        .expect(404);
+
+      expect((res.body as { requestId: string }).requestId).toBe(
+        res.headers['x-request-id'],
+      );
+    });
+  });
+
   describe('HTTP headers', () => {
     it('sends security headers and hides the framework', async () => {
       const res = await request(app.getHttpServer()).get('/movies');

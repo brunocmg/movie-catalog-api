@@ -12,7 +12,7 @@ Regra para toda branch de feature: migration + testes unitários + **testes e2e 
 - [x] **chore/security-hardening** — `helmet`, CORS por variável de ambiente, `@nestjs/throttler` no login, validação das env vars no boot, remoção de código/deps mortos (`AuthAdminGuard`, `passport*`), imagem Docker mais enxuta.
 - [x] **feat/roles-rbac** — `enum Role { USER ADMIN }`; guard carrega o usuário (com role) do banco para `request.user`; `@Roles()` + `RolesGuard` (Reflector); CRUD de filmes só admin; `GET /users` (admin, paginado); checagem de dono em `GET /users/:id`; `GET/PATCH /me`; seed de admin.
 - [x] **feat/auth-refresh-token** — `POST /auth/refresh` e `POST /auth/logout`; access 15 min; refresh 7–30 dias com hash no banco e rotação (reuso detectado revoga a família); troca de senha revoga os refresh tokens.
-- [ ] **chore/structured-logging** — `nestjs-pino` com request id (header `X-Request-Id`), substituindo interceptor/middleware de log.
+- [x] **chore/structured-logging** — `nestjs-pino` com request id (header `X-Request-Id`), substituindo interceptor/middleware de log.
 - [ ] **chore/cd-deploy** — deploy automático no Render quando o CI passa na `main`.
 
 ## Fase B — Domínio principal

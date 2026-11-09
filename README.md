@@ -40,7 +40,7 @@ A RESTful API for managing a movie catalog and its users, built with NestJS and 
 - ✅ Guard that re-checks on every request that the user still exists and is active
 - ✅ DTO validation with class-validator / class-transformer
 - ✅ Consistent error responses: 403/404/409 where they belong, no database details leaked, unexpected errors logged with stack trace
-- ✅ Request logging with interceptors and Nest `Logger`
+- ✅ Structured JSON logs (pino) with a request id per request, echoed in `X-Request-Id` and in error bodies
 - ✅ Security headers (helmet), configurable CORS and rate limiting (stricter on login and sign-up)
 - ✅ Environment validated at boot: the app refuses to start with a clear message
 - ✅ Swagger / OpenAPI documentation
@@ -186,6 +186,7 @@ All variables are validated when the app starts ([env.validation.ts](./src/confi
 | `JWT_REFRESH_TTL` | | `7d` | Refresh token lifetime |
 | `NODE_ENV` | | `development` | `development`, `production` or `test` |
 | `PORT` | | `3000` | HTTP port |
+| `LOG_LEVEL` | | `info` | `fatal`, `error`, `warn`, `info`, `debug`, `trace` or `silent` |
 | `SWAGGER_ENABLED` | | `true` | Serve the docs at `/docs` |
 | `CORS_ORIGINS` | | | `*` or a comma-separated list. Unset: any origin in development, disabled in production |
 | `TRUST_PROXY` | | `0` | Proxies in front of the app (`1` on Render), so rate limiting sees the real IP |
@@ -275,9 +276,12 @@ Every error has the same shape:
   "error": "Conflict",
   "message": "A movie with this name and year already exists",
   "path": "/movies",
-  "timestamp": "2026-01-01T12:00:00.000Z"
+  "timestamp": "2026-01-01T12:00:00.000Z",
+  "requestId": "5f0c1c1e-8f0a-4a8e-9a43-3f1f0f8d2b6a"
 }
 ```
+
+`requestId` is also returned in the `X-Request-Id` header and attached to every log line of that request, so a failing call can be traced in the logs. A safe `X-Request-Id` sent by the client or a proxy is kept.
 
 | Status | When |
 |---|---|

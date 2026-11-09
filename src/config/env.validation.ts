@@ -14,14 +14,23 @@ import {
 } from 'class-validator';
 import { DURATION_PATTERN } from '../common/utils/duration';
 
+export enum LogLevel {
+  Fatal = 'fatal',
+  Error = 'error',
+  Warn = 'warn',
+  Info = 'info',
+  Debug = 'debug',
+  Trace = 'trace',
+  Silent = 'silent',
+}
+
 export enum NodeEnv {
   Development = 'development',
   Production = 'production',
   Test = 'test',
 }
 
-// Reads the raw value from `obj`: with enableImplicitConversion, `value` has
-// already gone through Boolean("false") === true.
+// `value` was already coerced by enableImplicitConversion: Boolean('false') === true
 const toBoolean = ({
   obj,
   key,
@@ -33,11 +42,6 @@ const toBoolean = ({
   return typeof raw === 'string' ? raw.trim().toLowerCase() === 'true' : raw;
 };
 
-/**
- * Every environment variable the API reads. Validated once at boot so a
- * missing or malformed value fails fast with a clear message, instead of
- * breaking a request later.
- */
 export class EnvironmentVariables {
   @IsEnum(NodeEnv)
   NODE_ENV: NodeEnv = NodeEnv.Development;
@@ -46,6 +50,9 @@ export class EnvironmentVariables {
   @Min(1)
   @Max(65535)
   PORT: number = 3000;
+
+  @IsEnum(LogLevel)
+  LOG_LEVEL: LogLevel = LogLevel.Info;
 
   @Matches(/^postgres(ql)?:\/\/.+/, {
     message: 'DATABASE_URL must be a postgresql:// connection string',
@@ -67,24 +74,20 @@ export class EnvironmentVariables {
   @IsNotEmpty()
   JWT_TOKEN_ISSUER: string;
 
-  /** Access token lifetime. A bare number means seconds. */
   @Matches(DURATION_PATTERN, {
     message: 'JWT_TTL must be a duration such as 900, 15m, 1h or 7d',
   })
   JWT_TTL: string;
 
-  /** Refresh token lifetime (the token is rotated on every use). */
   @Matches(DURATION_PATTERN, {
     message: 'JWT_REFRESH_TTL must be a duration such as 7d or 30d',
   })
   JWT_REFRESH_TTL: string = '7d';
 
-  /** Comma-separated list of allowed origins, or `*`. Empty disables CORS. */
   @IsOptional()
   @IsString()
   CORS_ORIGINS?: string;
 
-  /** Number of reverse proxies in front of the app (Render, Nginx...). */
   @IsInt()
   @Min(0)
   TRUST_PROXY: number = 0;
@@ -97,12 +100,10 @@ export class EnvironmentVariables {
   @Min(1000)
   THROTTLE_TTL_MS: number = 60_000;
 
-  /** Requests per window for any route. */
   @IsInt()
   @Min(1)
   THROTTLE_LIMIT: number = 100;
 
-  /** Login attempts per window, per client IP. */
   @IsInt()
   @Min(1)
   THROTTLE_AUTH_LIMIT: number = 5;
