@@ -7,17 +7,17 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { Request } from 'express';
-import jwtConfig from '../config/jwt.config';
 import type { ConfigType } from '@nestjs/config';
-import { REQUEST_TOKEN_PAYLOAD_NAME } from '../common/auth.constant';
+import jwtConfig from '../config/jwt.config';
 import { PrismaService } from '../../prisma/prisma.service';
 import { PayloadTokenDto } from '../dto/payload-token.dto';
+import { AuthenticatedRequest } from '../types/authenticated-user';
 
-type RequestWithTokenPayload = Request & {
-  [REQUEST_TOKEN_PAYLOAD_NAME]?: PayloadTokenDto;
-};
-
+/**
+ * Verifies the bearer token, then loads the user from the database and puts
+ * it in `request.user`. A deleted or deactivated user is rejected even with a
+ * token that has not expired yet, and the role is always the current one.
+ */
 @Injectable()
 export class AuthTokenGuard implements CanActivate {
   private readonly logger = new Logger(AuthTokenGuard.name);
@@ -30,17 +30,14 @@ export class AuthTokenGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const request = context
-      .switchToHttp()
-      .getRequest<RequestWithTokenPayload>();
-    const token = this.extractTokenHeader(request);
+    const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
+    const token = this.extractBearerToken(request);
 
     if (!token) {
       throw new UnauthorizedException('Missing bearer token');
     }
 
     let payload: PayloadTokenDto;
-
     try {
       payload = await this.jwtService.verifyAsync<PayloadTokenDto>(token, {
         secret: this.jwtConfiguration.secret,
@@ -54,7 +51,7 @@ export class AuthTokenGuard implements CanActivate {
 
     const user = await this.prisma.user.findUnique({
       where: { id: payload.sub },
-      select: { active: true },
+      select: { id: true, email: true, role: true, active: true },
     });
 
     if (!user?.active) {
@@ -64,14 +61,14 @@ export class AuthTokenGuard implements CanActivate {
       throw new UnauthorizedException('Invalid or expired token');
     }
 
-    request[REQUEST_TOKEN_PAYLOAD_NAME] = payload;
-
+    request.user = { id: user.id, email: user.email, role: user.role };
     return true;
   }
 
-  private extractTokenHeader(request: Request): string | undefined {
+  private extractBearerToken(
+    request: AuthenticatedRequest,
+  ): string | undefined {
     const [type, token] = request.headers.authorization?.split(' ') ?? [];
-
     return type === 'Bearer' ? token : undefined;
   }
 }

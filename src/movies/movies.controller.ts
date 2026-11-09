@@ -9,11 +9,9 @@ import {
   Patch,
   Post,
   Query,
-  UseGuards,
 } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
-  ApiBearerAuth,
   ApiConflictResponse,
   ApiCreatedResponse,
   ApiNoContentResponse,
@@ -21,15 +19,15 @@ import {
   ApiOkResponse,
   ApiOperation,
   ApiTags,
-  ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { MoviesService } from './movies.service';
 import { CreateMovieDto } from './dto/create-movie.dto';
 import { UpdateMovieDto } from './dto/update-movie.dto';
 import { ResponseMovieDto } from './dto/response-movie.dto';
-import { PaginationDto } from './dto/pagination.dto';
+import { PaginationDto } from '../common/dto/pagination.dto';
 import { PaginatedMoviesDto } from './dto/paginated-movies.dto';
-import { AuthTokenGuard } from '../auth/guards/auth-token.guard';
+import { Role } from '@prisma/client';
+import { Auth } from '../auth/decorators/auth.decorator';
 import { ErrorResponseDto } from '../common/dto/error-response.dto';
 import { ParseIdPipe } from '../common/pipes/parse-id.pipe';
 
@@ -39,15 +37,13 @@ export class MoviesController {
   constructor(private readonly moviesService: MoviesService) {}
 
   @Post()
-  @UseGuards(AuthTokenGuard)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Register a new movie' })
+  @Auth(Role.ADMIN)
+  @ApiOperation({ summary: 'Register a new movie (admin)' })
   @ApiCreatedResponse({ type: ResponseMovieDto })
   @ApiBadRequestResponse({
     description: 'Invalid request body',
     type: ErrorResponseDto,
   })
-  @ApiUnauthorizedResponse({ type: ErrorResponseDto })
   @ApiConflictResponse({
     description: 'A movie with this name and year already exists',
     type: ErrorResponseDto,
@@ -80,15 +76,13 @@ export class MoviesController {
   }
 
   @Patch(':id')
-  @UseGuards(AuthTokenGuard)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Update a movie' })
+  @Auth(Role.ADMIN)
+  @ApiOperation({ summary: 'Update a movie (admin)' })
   @ApiOkResponse({ type: ResponseMovieDto })
   @ApiBadRequestResponse({
     description: 'Invalid id or request body',
     type: ErrorResponseDto,
   })
-  @ApiUnauthorizedResponse({ type: ErrorResponseDto })
   @ApiNotFoundResponse({
     description: 'Movie not found',
     type: ErrorResponseDto,
@@ -106,12 +100,10 @@ export class MoviesController {
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @UseGuards(AuthTokenGuard)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Delete a movie' })
+  @Auth(Role.ADMIN)
+  @ApiOperation({ summary: 'Delete a movie (admin)' })
   @ApiNoContentResponse({ description: 'Movie deleted' })
   @ApiBadRequestResponse({ description: 'Invalid id', type: ErrorResponseDto })
-  @ApiUnauthorizedResponse({ type: ErrorResponseDto })
   @ApiNotFoundResponse({
     description: 'Movie not found',
     type: ErrorResponseDto,

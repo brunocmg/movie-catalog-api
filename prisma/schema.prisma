@@ -23,12 +23,20 @@ model Movie {
   @@map("movies")
 }
 
+enum Role {
+  USER
+  ADMIN
+
+  @@map("role")
+}
+
 model User {
   id           Int      @id @default(autoincrement())
   name         String
   /// Always stored lower-cased (normalized in the DTOs).
   email        String   @unique
   passwordHash String   @map("password_hash")
+  role         Role     @default(USER)
   active       Boolean  @default(true)
   avatar       String?
   createdAt    DateTime @default(now()) @map("created_at")

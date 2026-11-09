@@ -29,9 +29,10 @@ A RESTful API for managing a movie catalog and its users, built with NestJS and 
 
 ## ✨ Features
 
-- ✅ CRUD for movies with pagination (unique per name + year)
+- ✅ CRUD for movies with pagination (unique per name + year), writes restricted to admins
 - ✅ User registration, update, deletion and avatar upload (JPEG/PNG, max 3 MB)
 - ✅ JWT authentication (Bearer) with password hashing (bcrypt)
+- ✅ Role-based access control (`USER` / `ADMIN`) with `@Auth()` / `@Roles()` and ownership checks
 - ✅ Case-insensitive e-mails (normalized to lower case)
 - ✅ Audit timestamps (`created_at` / `updated_at`) and snake_case columns
 - ✅ Generic login error and constant-time comparison to avoid user enumeration
@@ -78,6 +79,7 @@ erDiagram
     text name
     text email UK "lower-cased"
     text password_hash
+    role role "USER | ADMIN"
     boolean active
     text avatar
     timestamp created_at
@@ -133,7 +135,7 @@ Compose waits for Postgres to be healthy, applies the migrations and starts the 
 
 > After changing dependencies, recreate the container with fresh `node_modules`: `docker compose up --build -V app`.
 
-Seed the database (optional):
+Seed the database (optional). It creates sample movies, two users (`joao@email.com` / `123456`, `maria@email.com` / `123456`) and an admin (`admin@email.com` / `admin123`):
 
 ```bash
 docker compose exec app npx prisma db seed
@@ -193,21 +195,37 @@ Swagger UI is available at `http://localhost:3000/docs`.
 
 ### Endpoints
 
-| Method | Endpoint | Description | Auth |
+Access: 🌐 public · 👤 any authenticated user · 🙋 own account only · 🛡️ admin
+
+| Method | Endpoint | Description | Access |
 |---|---|---|---|
-| POST | `/auth` | Login and get an access token | ❌ |
-| GET | `/movies` | List movies (`?limit=&offset=`) | ❌ |
-| GET | `/movies/:id` | Get movie by ID | ❌ |
-| POST | `/movies` | Create a movie | ✅ |
-| PATCH | `/movies/:id` | Update a movie | ✅ |
-| DELETE | `/movies/:id` | Delete a movie (`204`) | ✅ |
-| POST | `/users` | Register a user | ❌ |
-| GET | `/users/:id` | Get user by ID | ✅ |
-| PATCH | `/users/:id` | Update own name/password | ✅ |
-| DELETE | `/users/:id` | Delete own user (`204`) | ✅ |
-| POST | `/users/upload` | Upload own avatar | ✅ |
-| GET | `/files/:name` | Serve uploaded avatars | ❌ |
-| GET | `/health` | Health check | ❌ |
+| POST | `/auth` | Login and get an access token | 🌐 |
+| GET | `/movies` | List movies (`?limit=&offset=`, max 100) | 🌐 |
+| GET | `/movies/:id` | Get movie by ID | 🌐 |
+| POST | `/movies` | Create a movie | 🛡️ |
+| PATCH | `/movies/:id` | Update a movie | 🛡️ |
+| DELETE | `/movies/:id` | Delete a movie (`204`) | 🛡️ |
+| POST | `/users` | Register a user | 🌐 |
+| GET | `/users` | List users (paginated) | 🛡️ |
+| GET | `/users/:id` | Get a user | 🙋 or 🛡️ |
+| PATCH | `/users/:id` | Update name/password | 🙋 |
+| DELETE | `/users/:id` | Delete a user (`204`); the last admin cannot be deleted | 🙋 or 🛡️ |
+| POST | `/users/upload` | Upload own avatar | 👤 |
+| GET | `/me` | Own account, with role | 👤 |
+| PATCH | `/me` | Update own name/password | 👤 |
+| GET | `/files/:name` | Serve uploaded avatars | 🌐 |
+| GET | `/health` | Health check | 🌐 |
+
+### Roles
+
+Every account is a `USER` by default. The role is loaded from the database on each request (never trusted from the token), so promoting, demoting or deactivating someone takes effect immediately.
+
+- **Development:** the seed creates `admin@email.com` / `admin123`.
+- **Production:** promote an existing account directly in the database:
+
+  ```sql
+  UPDATE users SET role = 'ADMIN' WHERE email = 'you@example.com';
+  ```
 
 ### Error format
 
@@ -289,7 +307,7 @@ Every pull request and every push to `main` runs on GitHub Actions:
 
 Highlights (full branch-by-branch plan in [docs/ROADMAP.md](./docs/ROADMAP.md)):
 
-- [ ] Role-based access control (`USER` / `ADMIN`)
+- [x] Role-based access control (`USER` / `ADMIN`)
 - [ ] Refresh tokens with rotation and logout
 - [ ] Structured logging with request id and continuous deployment
 - [ ] Series, seasons and episodes (genres as a proper relation)

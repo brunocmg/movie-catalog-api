@@ -8,7 +8,7 @@ import { isPrismaKnownError, PrismaErrorCode } from '../prisma/prisma-errors';
 import { CreateMovieDto } from './dto/create-movie.dto';
 import { UpdateMovieDto } from './dto/update-movie.dto';
 import { ResponseMovieDto } from './dto/response-movie.dto';
-import { PaginationDto } from './dto/pagination.dto';
+import { PaginationDto } from '../common/dto/pagination.dto';
 import { PaginatedMoviesDto } from './dto/paginated-movies.dto';
 
 @Injectable()

@@ -3,6 +3,7 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import {
   createTestApp,
+  registerAdminAndLogin,
   registerAndLogin,
   resetDatabase,
 } from './utils/test-app';
@@ -47,6 +48,8 @@ describe('Users (e2e)', () => {
         id: expect.any(Number) as number,
         name: 'Bruno Gomes',
         email: 'bruno@teste.com',
+        role: 'USER',
+        avatar: null,
         watchedMovies: [],
       });
     });
@@ -119,6 +122,8 @@ describe('Users (e2e)', () => {
         id: auth.id,
         name: 'Ana Caroline',
         email: 'ana@teste.com',
+        role: 'USER',
+        avatar: null,
         watchedMovies: [],
       });
     });
@@ -177,12 +182,12 @@ describe('Users (e2e)', () => {
   });
 
   describe('GET /users/:id', () => {
-    it('returns 404 for a missing user', async () => {
-      const ana = await registerAndLogin(app, ANA);
+    it('returns 404 for a missing user (admin)', async () => {
+      const admin = await registerAdminAndLogin(app);
 
       const res = await request(app.getHttpServer())
         .get('/users/999')
-        .set('Authorization', `Bearer ${ana.token}`)
+        .set('Authorization', `Bearer ${admin.token}`)
         .expect(404);
 
       expect((res.body as { message: string }).message).toBe('User not found');
