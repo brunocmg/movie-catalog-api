@@ -3,6 +3,7 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import {
   createTestApp,
+  registerAdminAndLogin,
   registerAndLogin,
   resetDatabase,
 } from './utils/test-app';
@@ -31,12 +32,7 @@ describe('Movies (e2e)', () => {
 
   beforeEach(async () => {
     await resetDatabase(app);
-    const auth = await registerAndLogin(app, {
-      name: 'Bruno',
-      email: 'bruno@teste.com',
-      password: '123123',
-    });
-    token = auth.token;
+    ({ token } = await registerAdminAndLogin(app));
   });
 
   afterAll(async () => {
@@ -139,6 +135,37 @@ describe('Movies (e2e)', () => {
 
     await del().expect(204);
     await del().expect(404);
+  });
+
+  it.each([
+    ['POST', '/movies'],
+    ['PATCH', '/movies/1'],
+    ['DELETE', '/movies/1'],
+  ])('forbids regular users on %s %s with 403', async (method, url) => {
+    const user = await registerAndLogin(app, {
+      name: 'Ana',
+      email: 'ana@teste.com',
+      password: '123123',
+    });
+    await createMovie({ name: 'Heat', year: 1995 }).expect(201);
+
+    const res = await request(app.getHttpServer())
+      [method.toLowerCase() as 'post' | 'patch' | 'delete'](url)
+      .set('Authorization', `Bearer ${user.token}`)
+      .send({ name: 'X', year: 2000 })
+      .expect(403);
+
+    expect((res.body as { message: string }).message).toBe(
+      'You do not have permission for this action',
+    );
+  });
+
+  it('lets anyone read the catalog without a token', async () => {
+    const movie = (await createMovie({ name: 'Heat', year: 1995 }))
+      .body as MovieBody;
+
+    await request(app.getHttpServer()).get('/movies').expect(200);
+    await request(app.getHttpServer()).get(`/movies/${movie.id}`).expect(200);
   });
 
   it('requires a token to create', async () => {

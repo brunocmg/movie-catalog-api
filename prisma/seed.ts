@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import { Pool } from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
-import { PrismaClient } from '.prisma/client';
+import { PrismaClient, Role } from '.prisma/client';
 import * as bcrypt from 'bcryptjs';
 
 const connectionString = `${process.env.DATABASE_URL}`;
@@ -23,8 +23,16 @@ const usersSeed: {
   email: string;
   name: string;
   password: string;
+  role?: Role;
   movies: MovieKey[];
 }[] = [
+  {
+    email: 'admin@email.com',
+    name: 'Admin',
+    password: 'admin123',
+    role: Role.ADMIN,
+    movies: [],
+  },
   {
     email: 'joao@email.com',
     name: 'Joao',
@@ -63,8 +71,13 @@ async function main() {
 
     const user = await prisma.user.upsert({
       where: { email: u.email },
-      update: { passwordHash }, // corrige os usuários antigos com senha em texto puro
-      create: { email: u.email, name: u.name, passwordHash },
+      update: { passwordHash, role: u.role ?? Role.USER },
+      create: {
+        email: u.email,
+        name: u.name,
+        passwordHash,
+        role: u.role ?? Role.USER,
+      },
     });
 
     for (const key of u.movies) {

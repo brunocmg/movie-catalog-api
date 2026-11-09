@@ -9,14 +9,13 @@ import {
   ParseFilePipeBuilder,
   Patch,
   Post,
+  Query,
   UploadedFile,
-  UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import {
   ApiBadRequestResponse,
-  ApiBearerAuth,
   ApiBody,
   ApiConflictResponse,
   ApiConsumes,
@@ -29,20 +28,18 @@ import {
   ApiPayloadTooLargeResponse,
   ApiTags,
   ApiTooManyRequestsResponse,
-  ApiUnauthorizedResponse,
   ApiUnprocessableEntityResponse,
 } from '@nestjs/swagger';
+import { Role } from '@prisma/client';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import {
-  ResponseUpdateAvatarDto,
-  ResponseUserDto,
-} from './dto/response-user.dto';
-import { AuthTokenGuard } from '../auth/guards/auth-token.guard';
-import { TokenPayloadParam } from '../auth/param/token-payload.param';
-import { PayloadTokenDto } from '../auth/dto/payload-token.dto';
+import { PaginatedUsersDto, ResponseUserDto } from './dto/response-user.dto';
+import { Auth } from '../auth/decorators/auth.decorator';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import type { AuthenticatedUser } from '../auth/types/authenticated-user';
 import { ErrorResponseDto } from '../common/dto/error-response.dto';
+import { PaginationDto } from '../common/dto/pagination.dto';
 import { ParseIdPipe } from '../common/pipes/parse-id.pipe';
 import { StrictThrottle } from '../common/throttling/throttling';
 
@@ -59,19 +56,36 @@ const MAX_AVATAR_SIZE = 3 * 1024 * 1024;
 export class UsersController {
   constructor(private readonly userService: UsersService) {}
 
+  @Get()
+  @Auth(Role.ADMIN)
+  @ApiOperation({ summary: 'List users (admin)' })
+  @ApiOkResponse({ type: PaginatedUsersDto })
+  @ApiBadRequestResponse({
+    description: 'Invalid pagination params',
+    type: ErrorResponseDto,
+  })
+  findAll(@Query() pagination: PaginationDto) {
+    return this.userService.findAll(pagination);
+  }
+
   @Get(':id')
-  @UseGuards(AuthTokenGuard)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Find one user by id' })
+  @Auth()
+  @ApiOperation({ summary: 'Find a user by id (own account, or any if admin)' })
   @ApiOkResponse({ type: ResponseUserDto })
   @ApiBadRequestResponse({ description: 'Invalid id', type: ErrorResponseDto })
-  @ApiUnauthorizedResponse({ type: ErrorResponseDto })
+  @ApiForbiddenResponse({
+    description: 'Not your account and not an admin',
+    type: ErrorResponseDto,
+  })
   @ApiNotFoundResponse({
     description: 'User not found',
     type: ErrorResponseDto,
   })
-  findOneUser(@Param('id', ParseIdPipe) id: number) {
-    return this.userService.findOne(id);
+  findOneUser(
+    @Param('id', ParseIdPipe) id: number,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.userService.findOne(id, user);
   }
 
   @Post()
@@ -95,15 +109,13 @@ export class UsersController {
   }
 
   @Patch(':id')
-  @UseGuards(AuthTokenGuard)
-  @ApiBearerAuth()
+  @Auth()
   @ApiOperation({ summary: 'Update the own user (name and/or password)' })
   @ApiOkResponse({ type: ResponseUserDto })
   @ApiBadRequestResponse({
     description: 'Invalid id or request body',
     type: ErrorResponseDto,
   })
-  @ApiUnauthorizedResponse({ type: ErrorResponseDto })
   @ApiForbiddenResponse({
     description: 'Not your account',
     type: ErrorResponseDto,
@@ -115,40 +127,41 @@ export class UsersController {
   updateUser(
     @Param('id', ParseIdPipe) id: number,
     @Body() updateUserDto: UpdateUserDto,
-    @TokenPayloadParam() tokenPayload: PayloadTokenDto,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.userService.update(id, updateUserDto, tokenPayload);
+    return this.userService.update(id, updateUserDto, user);
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @UseGuards(AuthTokenGuard)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Delete the own user' })
+  @Auth()
+  @ApiOperation({ summary: 'Delete a user (own account, or any if admin)' })
   @ApiNoContentResponse({ description: 'User deleted' })
   @ApiBadRequestResponse({ description: 'Invalid id', type: ErrorResponseDto })
-  @ApiUnauthorizedResponse({ type: ErrorResponseDto })
   @ApiForbiddenResponse({
-    description: 'Not your account',
+    description: 'Not your account and not an admin',
     type: ErrorResponseDto,
   })
   @ApiNotFoundResponse({
     description: 'User not found',
     type: ErrorResponseDto,
   })
+  @ApiConflictResponse({
+    description: 'The last admin cannot be deleted',
+    type: ErrorResponseDto,
+  })
   deleteUser(
     @Param('id', ParseIdPipe) id: number,
-    @TokenPayloadParam() tokenPayload: PayloadTokenDto,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.userService.delete(id, tokenPayload);
+    return this.userService.delete(id, user);
   }
 
   @Post('upload')
-  @UseGuards(AuthTokenGuard)
+  @Auth()
   @UseInterceptors(
     FileInterceptor('file', { limits: { fileSize: MAX_AVATAR_SIZE } }),
   )
-  @ApiBearerAuth()
   @ApiOperation({ summary: 'Upload the own avatar (JPEG or PNG, max 3 MB)' })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
@@ -157,8 +170,7 @@ export class UsersController {
       properties: { file: { type: 'string', format: 'binary' } },
     },
   })
-  @ApiCreatedResponse({ type: ResponseUpdateAvatarDto })
-  @ApiUnauthorizedResponse({ type: ErrorResponseDto })
+  @ApiCreatedResponse({ type: ResponseUserDto })
   @ApiUnprocessableEntityResponse({
     description: 'Missing file or invalid file type',
     type: ErrorResponseDto,
@@ -168,7 +180,7 @@ export class UsersController {
     type: ErrorResponseDto,
   })
   uploadAvatar(
-    @TokenPayloadParam() tokenPayload: PayloadTokenDto,
+    @CurrentUser() user: AuthenticatedUser,
     @UploadedFile(
       new ParseFilePipeBuilder()
         .addFileTypeValidator({ fileType: /^image\/(jpeg|png)$/ })
@@ -177,6 +189,6 @@ export class UsersController {
     )
     file: UploadedAvatarFile,
   ) {
-    return this.userService.uploadAvatarImage(tokenPayload, file);
+    return this.userService.uploadAvatarImage(user, file);
   }
 }

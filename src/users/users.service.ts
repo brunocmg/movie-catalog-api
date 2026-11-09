@@ -5,18 +5,17 @@ import {
   NotFoundException,
   UnsupportedMediaTypeException,
 } from '@nestjs/common';
+import { Role } from '@prisma/client';
 import * as path from 'node:path';
 import * as fs from 'node:fs/promises';
 import { PrismaService } from '../prisma/prisma.service';
 import { isPrismaKnownError, PrismaErrorCode } from '../prisma/prisma-errors';
 import { HashingServiceProtocol } from '../auth/hash/hashing.service';
-import { PayloadTokenDto } from '../auth/dto/payload-token.dto';
+import { AuthenticatedUser } from '../auth/types/authenticated-user';
+import { PaginationDto } from '../common/dto/pagination.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import {
-  ResponseUpdateAvatarDto,
-  ResponseUserDto,
-} from './dto/response-user.dto';
+import { PaginatedUsersDto, ResponseUserDto } from './dto/response-user.dto';
 
 type UploadedAvatarFile = {
   originalname: string;
@@ -33,6 +32,8 @@ const userSelect = {
   id: true,
   name: true,
   email: true,
+  role: true,
+  avatar: true,
   watchedMovies: { select: { movie: { select: { name: true } } } },
 } as const;
 
@@ -40,17 +41,19 @@ type SelectedUser = {
   id: number;
   name: string;
   email: string;
+  role: Role;
+  avatar: string | null;
   watchedMovies: { movie: { name: string } }[];
 };
 
-function toResponse<T extends SelectedUser>(
-  user: T,
-): Omit<T, 'watchedMovies'> & { watchedMovies: string[] } {
+function toResponse(user: SelectedUser): ResponseUserDto {
   return {
     ...user,
     watchedMovies: user.watchedMovies.map((w) => w.movie.name),
   };
 }
+
+const isAdmin = (user: AuthenticatedUser) => user.role === Role.ADMIN;
 
 @Injectable()
 export class UsersService {
@@ -59,7 +62,38 @@ export class UsersService {
     private readonly hashingService: HashingServiceProtocol,
   ) {}
 
-  async findOne(id: number): Promise<ResponseUserDto> {
+  async findAll(pagination: PaginationDto): Promise<PaginatedUsersDto> {
+    const { limit = 10, offset = 0 } = pagination;
+
+    const [data, total] = await this.prisma.$transaction([
+      this.prisma.user.findMany({
+        orderBy: { id: 'asc' },
+        take: limit,
+        skip: offset,
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          active: true,
+          createdAt: true,
+        },
+      }),
+      this.prisma.user.count(),
+    ]);
+
+    return { data, meta: { limit, offset, total } };
+  }
+
+  /** Owners can read their own account; admins can read any account. */
+  async findOne(
+    id: number,
+    requester: AuthenticatedUser,
+  ): Promise<ResponseUserDto> {
+    if (id !== requester.id && !isAdmin(requester)) {
+      throw new ForbiddenException('You can only access your own account');
+    }
+
     const user = await this.prisma.user.findUnique({
       where: { id },
       select: userSelect,
@@ -91,12 +125,15 @@ export class UsersService {
     }
   }
 
+  /** Only the owner: not even an admin changes someone else's password. */
   async update(
     id: number,
     updateUserDto: UpdateUserDto,
-    tokenPayload: PayloadTokenDto,
+    requester: AuthenticatedUser,
   ): Promise<ResponseUserDto> {
-    this.assertOwner(id, tokenPayload);
+    if (id !== requester.id) {
+      throw new ForbiddenException('You can only change your own account');
+    }
 
     const data: { name?: string; passwordHash?: string } = {};
     if (updateUserDto.name) data.name = updateUserDto.name;
@@ -118,20 +155,34 @@ export class UsersService {
     }
   }
 
-  async delete(id: number, tokenPayload: PayloadTokenDto): Promise<void> {
-    this.assertOwner(id, tokenPayload);
-
-    try {
-      await this.prisma.user.delete({ where: { id } });
-    } catch (err) {
-      throw this.notFoundOr(err);
+  /** Owners can delete their own account; admins can delete any account. */
+  async delete(id: number, requester: AuthenticatedUser): Promise<void> {
+    if (id !== requester.id && !isAdmin(requester)) {
+      throw new ForbiddenException('You can only delete your own account');
     }
+
+    await this.prisma.$transaction(async (tx) => {
+      const target = await tx.user.findUnique({
+        where: { id },
+        select: { role: true },
+      });
+      if (!target) throw new NotFoundException('User not found');
+
+      if (target.role === Role.ADMIN) {
+        const admins = await tx.user.count({ where: { role: Role.ADMIN } });
+        if (admins <= 1) {
+          throw new ConflictException('The last admin cannot be deleted');
+        }
+      }
+
+      await tx.user.delete({ where: { id } });
+    });
   }
 
   async uploadAvatarImage(
-    tokenPayload: PayloadTokenDto,
+    requester: AuthenticatedUser,
     file: UploadedAvatarFile,
-  ): Promise<ResponseUpdateAvatarDto> {
+  ): Promise<ResponseUserDto> {
     const extension = EXTENSION_BY_MIMETYPE[file.mimetype];
     if (!extension) {
       throw new UnsupportedMediaTypeException('Only JPEG and PNG are allowed');
@@ -139,26 +190,20 @@ export class UsersService {
 
     // The file name comes from the user id and the validated mimetype, never
     // from the uploaded name, so it cannot be used for path traversal.
-    const fileName = `${tokenPayload.sub}.${extension}`;
+    const fileName = `${requester.id}.${extension}`;
     const uploadDir = path.resolve(process.cwd(), 'files');
     await fs.mkdir(uploadDir, { recursive: true });
     await fs.writeFile(path.join(uploadDir, fileName), file.buffer);
 
     try {
       const user = await this.prisma.user.update({
-        where: { id: tokenPayload.sub },
+        where: { id: requester.id },
         data: { avatar: fileName },
-        select: { ...userSelect, avatar: true },
+        select: userSelect,
       });
       return toResponse(user);
     } catch (err) {
       throw this.notFoundOr(err);
-    }
-  }
-
-  private assertOwner(id: number, tokenPayload: PayloadTokenDto) {
-    if (id !== tokenPayload.sub) {
-      throw new ForbiddenException('You can only change your own account');
     }
   }
 

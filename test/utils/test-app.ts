@@ -1,5 +1,6 @@
 import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
+import { Role } from '@prisma/client';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '../../src/app/app.module';
@@ -26,6 +27,28 @@ export async function resetDatabase(app: INestApplication): Promise<void> {
 }
 
 export type TestUser = { name: string; email: string; password: string };
+
+/** Registers a user, promotes it straight in the database and logs in. */
+export async function registerAdminAndLogin(
+  app: INestApplication<App>,
+  user: TestUser = {
+    name: 'Admin',
+    email: 'admin@teste.com',
+    password: 'admin123',
+  },
+): Promise<{ id: number; token: string }> {
+  const auth = await registerAndLogin(app, user);
+  await setRole(app, auth.id, Role.ADMIN);
+  return auth;
+}
+
+export async function setRole(
+  app: INestApplication,
+  id: number,
+  role: Role,
+): Promise<void> {
+  await app.get(PrismaService).user.update({ where: { id }, data: { role } });
+}
 
 export async function registerAndLogin(
   app: INestApplication<App>,
