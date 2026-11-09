@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 FROM node:24-slim AS base
 WORKDIR /app
 RUN apt-get update -y \
@@ -6,7 +7,8 @@ RUN apt-get update -y \
 
 FROM base AS deps
 COPY package.json package-lock.json ./
-RUN npm ci
+# the npm cache lives in a BuildKit cache mount, so it never ends up in a layer
+RUN --mount=type=cache,target=/root/.npm npm ci
 
 FROM deps AS dev
 # `nest start --watch` uses `ps` to stop the old process on reload
@@ -29,7 +31,7 @@ FROM base AS prod
 ENV NODE_ENV=production
 ARG DATABASE_URL=postgresql://postgres:postgres@localhost:5432/postgres
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev
+RUN --mount=type=cache,target=/root/.npm npm ci --omit=dev
 COPY prisma ./prisma
 COPY prisma.config.ts ./
 RUN npx prisma generate
