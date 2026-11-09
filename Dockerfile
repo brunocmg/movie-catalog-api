@@ -7,11 +7,10 @@ RUN apt-get update -y \
 
 FROM base AS deps
 COPY package.json package-lock.json ./
-# the npm cache lives in a BuildKit cache mount, so it never ends up in a layer
 RUN --mount=type=cache,target=/root/.npm npm ci
 
 FROM deps AS dev
-# `nest start --watch` uses `ps` to stop the old process on reload
+# nest --watch needs ps
 RUN apt-get update -y \
     && apt-get install -y --no-install-recommends procps \
     && rm -rf /var/lib/apt/lists/*

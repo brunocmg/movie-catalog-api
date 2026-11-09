@@ -87,7 +87,6 @@ export class UsersService {
     return { data, meta: { limit, offset, total } };
   }
 
-  /** Owners can read their own account; admins can read any account. */
   async findOne(
     id: number,
     requester: AuthenticatedUser,
@@ -127,7 +126,6 @@ export class UsersService {
     }
   }
 
-  /** Only the owner: not even an admin changes someone else's password. */
   async update(
     id: number,
     updateUserDto: UpdateUserDto,
@@ -156,13 +154,11 @@ export class UsersService {
       throw this.notFoundOr(err);
     }
 
-    // A new password ends every session: stolen refresh tokens stop working.
     if (data.passwordHash) await this.refreshTokens.revokeAllForUser(id);
 
     return toResponse(user);
   }
 
-  /** Owners can delete their own account; admins can delete any account. */
   async delete(id: number, requester: AuthenticatedUser): Promise<void> {
     if (id !== requester.id && !isAdmin(requester)) {
       throw new ForbiddenException('You can only delete your own account');
@@ -195,8 +191,7 @@ export class UsersService {
       throw new UnsupportedMediaTypeException('Only JPEG and PNG are allowed');
     }
 
-    // The file name comes from the user id and the validated mimetype, never
-    // from the uploaded name, so it cannot be used for path traversal.
+    // built from the id and the mimetype, never from the uploaded name
     const fileName = `${requester.id}.${extension}`;
     const uploadDir = path.resolve(process.cwd(), 'files');
     await fs.mkdir(uploadDir, { recursive: true });

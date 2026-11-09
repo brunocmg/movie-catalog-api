@@ -8,8 +8,7 @@ import jwtConfig from './config/jwt.config';
 import { SignInDto } from './dto/signin.dto';
 import { ResponseSignInDto, TokensDto } from './dto/response-signin.dto';
 
-// Compared against when the e-mail does not exist, so the response time does
-// not reveal which e-mails are registered.
+// keeps the response time the same when the e-mail does not exist
 const DUMMY_HASH =
   '$2a$10$/b/STTR8KX5yP3Ln6V.o7u1qUxDqmOEZRX3kzj/ERGzlmoz/gYRT6';
 
@@ -54,7 +53,6 @@ export class AuthService {
     };
   }
 
-  /** Exchanges a refresh token for a new access token and a new refresh token. */
   async refresh(token: string): Promise<TokensDto> {
     const { userId, refreshToken } = await this.refreshTokens.rotate(token);
 

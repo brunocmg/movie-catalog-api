@@ -78,7 +78,6 @@ export class MoviesService {
     }
   }
 
-  /** Maps the Prisma errors this resource can hit to HTTP exceptions. */
   private translate(err: unknown): unknown {
     if (isPrismaKnownError(err, PrismaErrorCode.RecordNotFound)) {
       return new NotFoundException('Movie not found');

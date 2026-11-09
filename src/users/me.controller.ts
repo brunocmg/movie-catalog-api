@@ -13,7 +13,6 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../auth/types/authenticated-user';
 import { ErrorResponseDto } from '../common/dto/error-response.dto';
 
-/** The authenticated user's own account, without having to know the id. */
 @ApiTags('me')
 @Controller('me')
 @Auth()

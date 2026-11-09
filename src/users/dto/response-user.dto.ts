@@ -22,7 +22,6 @@ export class ResponseUserDto {
   watchedMovies: string[];
 }
 
-/** Admin listing: account data only, no watch history. */
 export class UserSummaryDto {
   @ApiProperty({ example: 1 })
   id: number;

@@ -26,8 +26,7 @@ services:
     environment:
       DATABASE_URL: postgres://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
       NODE_ENV: development
-      # File events from Windows/macOS bind mounts do not reach the container,
-      # so the TypeScript watcher polls instead.
+      # bind mounts on Windows/macOS do not forward file events
       TSC_WATCHFILE: DynamicPriorityPolling
       TSC_WATCHDIRECTORY: RecursiveDirectoryUsingDynamicPriorityPolling
     depends_on:

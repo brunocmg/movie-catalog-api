@@ -212,7 +212,6 @@ describe('Users (e2e)', () => {
         .set('Authorization', `Bearer ${lucas.token}`)
         .expect(204);
 
-      // the guard checks that the user still exists on every request
       await request(app.getHttpServer())
         .get(`/users/${lucas.id}`)
         .set('Authorization', `Bearer ${lucas.token}`)
