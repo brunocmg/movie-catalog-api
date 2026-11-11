@@ -5,30 +5,23 @@ A RESTful API for managing a movie catalog and its users, built with NestJS and 
 [![CI](https://github.com/brunocmg/movie-catalog-api/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/brunocmg/movie-catalog-api/actions/workflows/ci.yml)
 [![Deploy](https://github.com/brunocmg/movie-catalog-api/actions/workflows/deploy-check.yml/badge.svg)](https://github.com/brunocmg/movie-catalog-api/actions/workflows/deploy-check.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
-[![NestJS](https://img.shields.io/badge/NestJS-E0234E?style=flat&logo=nestjs&logoColor=white)](https://nestjs.com/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=flat&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
-[![Prisma](https://img.shields.io/badge/Prisma-2D3748?style=flat&logo=prisma&logoColor=white)](https://www.prisma.io/)
-[![Docker](https://img.shields.io/badge/Docker-2496ED?style=flat&logo=docker&logoColor=white)](https://www.docker.com/)
 
----
+## Live demo
 
-## 📋 Table of Contents
+| | |
+| --- | --- |
+| Web front end | https://movie-catalog-eosin-gamma.vercel.app ([repository](https://github.com/brunocmg/movie-catalog-web)) |
+| API docs (Swagger) | https://movie-catalog-api-54m7.onrender.com/docs |
 
-- [Features](#-features)
-- [Tech Stack](#-tech-stack)
-- [Database Schema](#-database-schema)
-- [Getting Started](#-getting-started)
-- [Environment Variables](#-environment-variables)
-- [API Documentation](#-api-documentation)
-- [Running Tests](#-running-tests)
-- [CI](#-ci)
-- [Roadmap](#-roadmap)
-- [License](#-license)
+> **Note:** the API runs on Render's free plan and goes to sleep when idle. The first request can take about a minute to wake it up.
 
----
+To try the web app without signing up, click **Testar com conta demo** (a regular `USER` account, so it cannot change the catalog).
 
-## ✨ Features
+## Screenshots
+
+![Swagger UI](./docs/images/swagger.png)
+
+## Features
 
 - ✅ Movies and series share one `titles` model (type, runtime, synopsis, poster, genres); movies CRUD with pagination, writes restricted to admins
 - ✅ Genres as a table, created on the fly when a title is saved
