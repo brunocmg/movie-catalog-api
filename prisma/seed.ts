@@ -153,6 +153,31 @@ async function main() {
     }
   }
 
+  const seasonsSeed = [
+    { number: 1, episodes: ['Pilot', "Cat's in the Bag...", 'Gray Matter'] },
+    { number: 2, episodes: ['Seven Thirty-Seven', 'Grilled'] },
+  ];
+  for (const { number, episodes } of seasonsSeed) {
+    const titleId = titleIds.breaking_bad;
+    const season = await prisma.season.upsert({
+      where: { titleId_number: { titleId, number } },
+      update: {},
+      create: { titleId, number, name: `Season ${number}` },
+    });
+    for (const [i, name] of episodes.entries()) {
+      await prisma.episode.upsert({
+        where: { seasonId_number: { seasonId: season.id, number: i + 1 } },
+        update: {},
+        create: {
+          seasonId: season.id,
+          number: i + 1,
+          name,
+          runtimeMinutes: 47,
+        },
+      });
+    }
+  }
+
   console.log('Seed done');
 }
 

@@ -79,6 +79,8 @@ erDiagram
   titles ||--o{ watched_titles : "watched by"
   titles ||--o{ title_genres : has
   genres ||--o{ title_genres : groups
+  titles ||--o{ seasons : "has (series)"
+  seasons ||--o{ episodes : has
   users ||--o{ refresh_tokens : "has sessions"
   users {
     int id PK
@@ -117,6 +119,19 @@ erDiagram
     int user_id PK,FK
     int title_id PK,FK
     timestamp watched_at
+  }
+  seasons {
+    int id PK
+    int title_id FK
+    int number
+    text name
+  }
+  episodes {
+    int id PK
+    int season_id FK
+    int number
+    text name
+    int runtime_minutes
   }
   refresh_tokens {
     int id PK
@@ -242,6 +257,16 @@ Access: 🌐 public · 👤 any authenticated user · 🙋 own account only · �
 | POST | `/movies` | Create a movie (`genres` is a list of names) | 🛡️ |
 | PATCH | `/movies/:id` | Update a movie | 🛡️ |
 | DELETE | `/movies/:id` | Delete a movie (`204`) | 🛡️ |
+| GET | `/series`, `/series/:id` | List / get series | 🌐 |
+| POST | `/series` | Create a series | 🛡️ |
+| PATCH / DELETE | `/series/:id` | Update / delete a series (deleting cascades to seasons and episodes) | 🛡️ |
+| GET | `/series/:id/seasons` | List seasons with episode count | 🌐 |
+| POST | `/series/:id/seasons` | Add a season | 🛡️ |
+| GET | `/seasons/:id`, `/seasons/:id/episodes` | Get a season / list its episodes | 🌐 |
+| PATCH / DELETE | `/seasons/:id` | Update / delete a season | 🛡️ |
+| POST | `/seasons/:id/episodes` | Add an episode | 🛡️ |
+| GET | `/episodes/:id` | Get an episode | 🌐 |
+| PATCH / DELETE | `/episodes/:id` | Update / delete an episode | 🛡️ |
 | POST | `/users` | Register a user | 🌐 |
 | GET | `/users` | List users (paginated) | 🛡️ |
 | GET | `/users/:id` | Get a user | 🙋 or 🛡️ |
@@ -326,6 +351,7 @@ src/
 ├── auth/         # login, JWT config, guard, hashing
 ├── users/
 ├── movies/
+├── series/       # series, seasons, episodes
 ├── prisma/       # PrismaService
 ├── health/
 └── common/       # filters, guards, interceptors, middlewares
@@ -374,7 +400,7 @@ Highlights (full branch-by-branch plan in [docs/ROADMAP.md](./docs/ROADMAP.md)):
 - [ ] Refresh tokens with rotation and logout
 - [x] Structured logging with request id and continuous deployment
 - [x] Unified title model with genres
-- [ ] Series, seasons and episodes
+- [x] Series, seasons and episodes
 - [ ] Watch history, favorites and watchlist
 - [ ] TMDB metadata import
 - [ ] Search, filters and sorting
