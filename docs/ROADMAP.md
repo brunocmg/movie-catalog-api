@@ -25,7 +25,7 @@ Regra para toda branch de feature: migration + testes unitários + **testes e2e 
 - [x] **feat/tmdb-import** — importação de metadados (sinopse, pôster, gêneros, elenco, duração, temporadas/episódios) pela API do TMDB, só admin.
 - [x] **feat/search-and-filters** — `?q=` (índice trigram no Postgres), filtros por gênero, ano e tipo, ordenação.
 - [x] **feat/ratings-and-reviews** — nota de 1 a 10 e review opcional, uma por usuário por título; média e contagem no detalhe do título.
-- [ ] **feat/stats-and-recommendations** — `GET /me/stats` (total assistido, horas, gêneros favoritos) e recomendações por gênero/nota.
+- [x] **feat/stats-and-recommendations** — `GET /me/stats` (total assistido, horas, gêneros favoritos) e recomendações por gênero/nota.
 
 ## Fase C — Infra e extras
 
