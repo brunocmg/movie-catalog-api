@@ -81,6 +81,8 @@ erDiagram
   genres ||--o{ title_genres : groups
   titles ||--o{ seasons : "has (series)"
   seasons ||--o{ episodes : has
+  users ||--o{ watched_episodes : watches
+  episodes ||--o{ watched_episodes : "watched by"
   users ||--o{ refresh_tokens : "has sessions"
   users {
     int id PK
@@ -118,6 +120,11 @@ erDiagram
   watched_titles {
     int user_id PK,FK
     int title_id PK,FK
+    timestamp watched_at
+  }
+  watched_episodes {
+    int user_id PK,FK
+    int episode_id PK,FK
     timestamp watched_at
   }
   seasons {
@@ -265,6 +272,11 @@ Access: 🌐 public · 👤 any authenticated user · 🙋 own account only · �
 | GET | `/seasons/:id`, `/seasons/:id/episodes` | Get a season / list its episodes | 🌐 |
 | PATCH / DELETE | `/seasons/:id` | Update / delete a season | 🛡️ |
 | POST | `/seasons/:id/episodes` | Add an episode | 🛡️ |
+| GET | `/me/watched` | Watch history, most recent first (`?type=&limit=&offset=`), with progress for series | 👤 |
+| GET | `/me/watched/:titleId` | A watched title; `404` if not marked | 👤 |
+| GET | `/me/watched/:titleId/episodes` | Episodes of a series with a `watched` flag | 👤 |
+| PUT / DELETE | `/me/watched/:titleId` | Mark / unmark a movie or a whole series (`204`, idempotent) | 👤 |
+| PUT / DELETE | `/me/watched/episodes/:episodeId` | Mark / unmark one episode; the series follows its episodes | 👤 |
 | GET | `/episodes/:id` | Get an episode | 🌐 |
 | PATCH / DELETE | `/episodes/:id` | Update / delete an episode | 🛡️ |
 | POST | `/users` | Register a user | 🌐 |
