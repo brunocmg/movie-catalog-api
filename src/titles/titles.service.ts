@@ -7,7 +7,7 @@ import { Prisma, TitleType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { isPrismaKnownError, PrismaErrorCode } from '../prisma/prisma-errors';
 import { slugify } from '../common/utils/slug';
-import { PaginationDto } from '../common/dto/pagination.dto';
+import { SortOrder, TitleSearchDto, TitleSortBy } from './dto/title-search.dto';
 import { CreateTitleDto } from './dto/create-title.dto';
 import { UpdateTitleDto } from './dto/update-title.dto';
 import { PaginatedTitlesDto, ResponseTitleDto } from './dto/response-title.dto';
@@ -48,6 +48,32 @@ function uniqueGenres(names: string[]) {
   }
   return [...bySlug].map(([slug, name]) => ({ slug, name }));
 }
+
+// Prisma passes % and _ through to ILIKE
+const escapeLike = (value: string) => value.replace(/[\\%_]/g, '\\$&');
+
+const buildWhere = (
+  { q, genre, year, yearFrom, yearTo }: TitleSearchDto,
+  type?: TitleType,
+): Prisma.TitleWhereInput => ({
+  type,
+  name: q ? { contains: escapeLike(q), mode: 'insensitive' } : undefined,
+  genres: genre ? { some: { genre: { slug: slugify(genre) } } } : undefined,
+  year:
+    year !== undefined
+      ? year
+      : yearFrom !== undefined || yearTo !== undefined
+        ? { gte: yearFrom, lte: yearTo }
+        : undefined,
+});
+
+const buildOrderBy = ({
+  sortBy = TitleSortBy.Id,
+  order = SortOrder.Asc,
+}: TitleSearchDto): Prisma.TitleOrderByWithRelationInput[] =>
+  sortBy === TitleSortBy.Id
+    ? [{ id: order }]
+    : [{ [sortBy]: order }, { id: 'asc' }];
 
 export const connectGenres = (names: string[]) =>
   uniqueGenres(names).map((g) => ({
@@ -90,16 +116,16 @@ export class TitlesService {
   }
 
   async findAll(
-    pagination: PaginationDto,
+    search: TitleSearchDto,
     type?: TitleType,
   ): Promise<PaginatedTitlesDto> {
-    const { limit = 10, offset = 0 } = pagination;
-    const where: Prisma.TitleWhereInput = { type };
+    const { limit = 10, offset = 0 } = search;
+    const where = buildWhere(search, type);
 
     const [rows, total] = await this.prisma.$transaction([
       this.prisma.title.findMany({
         where,
-        orderBy: { id: 'asc' },
+        orderBy: buildOrderBy(search),
         take: limit,
         skip: offset,
         select: titleSelect,

@@ -2,6 +2,7 @@ import { Test } from '@nestjs/testing';
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { TitleType } from '@prisma/client';
 import { TitlesService } from './titles.service';
+import { SortOrder, TitleSortBy } from './dto/title-search.dto';
 import { PrismaService } from '../prisma/prisma.service';
 
 const prismaMock = {
@@ -120,6 +121,30 @@ describe('TitlesService', () => {
   });
 
   describe('findAll', () => {
+    it('builds the where and order from the search params', async () => {
+      prismaMock.title.findMany.mockResolvedValue([]);
+      prismaMock.title.count.mockResolvedValue(0);
+
+      await service.findAll({
+        q: '50%_off',
+        genre: 'Ficção Científica',
+        yearFrom: 1990,
+        sortBy: TitleSortBy.Year,
+        order: SortOrder.Desc,
+      });
+
+      expect(prismaMock.title.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            name: { contains: '50\\%\\_off', mode: 'insensitive' },
+            genres: { some: { genre: { slug: 'ficcao-cientifica' } } },
+            year: { gte: 1990, lte: undefined },
+          },
+          orderBy: [{ year: 'desc' }, { id: 'asc' }],
+        }),
+      );
+    });
+
     it('filters by type and counts with the same filter', async () => {
       prismaMock.title.findMany.mockResolvedValue([row]);
       prismaMock.title.count.mockResolvedValue(7);

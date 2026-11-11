@@ -28,7 +28,7 @@ import {
   PaginatedTitlesDto,
   ResponseTitleDto,
 } from '../titles/dto/response-title.dto';
-import { PaginationDto } from '../common/dto/pagination.dto';
+import { TitleSearchDto } from '../titles/dto/title-search.dto';
 import { Auth } from '../auth/decorators/auth.decorator';
 import { ErrorResponseDto } from '../common/dto/error-response.dto';
 import { ParseIdPipe } from '../common/pipes/parse-id.pipe';
@@ -55,14 +55,14 @@ export class MoviesController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'List movies (paginated)' })
+  @ApiOperation({ summary: 'List and search movies (paginated)' })
   @ApiOkResponse({ type: PaginatedTitlesDto })
   @ApiBadRequestResponse({
-    description: 'Invalid pagination params',
+    description: 'Invalid query params',
     type: ErrorResponseDto,
   })
-  findAll(@Query() pagination: PaginationDto) {
-    return this.titles.findAll(pagination, TitleType.MOVIE);
+  findAll(@Query() search: TitleSearchDto) {
+    return this.titles.findAll(search, TitleType.MOVIE);
   }
 
   @Get(':id')
