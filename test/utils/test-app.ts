@@ -1,5 +1,5 @@
 import { INestApplication } from '@nestjs/common';
-import { Test } from '@nestjs/testing';
+import { Test, TestingModuleBuilder } from '@nestjs/testing';
 import { Role } from '@prisma/client';
 import request from 'supertest';
 import { App } from 'supertest/types';
@@ -7,10 +7,12 @@ import { AppModule } from '../../src/app/app.module';
 import { setupApp } from '../../src/app/app.setup';
 import { PrismaService } from '../../src/prisma/prisma.service';
 
-export async function createTestApp(): Promise<INestApplication<App>> {
-  const moduleRef = await Test.createTestingModule({
-    imports: [AppModule],
-  }).compile();
+export async function createTestApp(
+  configure: (builder: TestingModuleBuilder) => TestingModuleBuilder = (b) => b,
+): Promise<INestApplication<App>> {
+  const moduleRef = await configure(
+    Test.createTestingModule({ imports: [AppModule] }),
+  ).compile();
 
   const app = moduleRef.createNestApplication<INestApplication<App>>();
   setupApp(app);

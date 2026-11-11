@@ -11,6 +11,7 @@ import { GenresService } from './genres.service';
 import { TitleQueryDto } from './dto/title-query.dto';
 import { PaginatedTitlesDto, ResponseTitleDto } from './dto/response-title.dto';
 import { ResponseGenreDto } from './dto/response-genre.dto';
+import { CastMemberDto } from '../tmdb/dto/tmdb.dto';
 import { ErrorResponseDto } from '../common/dto/error-response.dto';
 import { ParseIdPipe } from '../common/pipes/parse-id.pipe';
 
@@ -43,6 +44,18 @@ export class TitlesController {
   })
   findOne(@Param('id', ParseIdPipe) id: number) {
     return this.titles.findOne(id);
+  }
+
+  @Get('titles/:id/cast')
+  @ApiOperation({ summary: 'List the cast of a title (imported from TMDB)' })
+  @ApiOkResponse({ type: [CastMemberDto] })
+  @ApiBadRequestResponse({ description: 'Invalid id', type: ErrorResponseDto })
+  @ApiNotFoundResponse({
+    description: 'Title not found',
+    type: ErrorResponseDto,
+  })
+  findCast(@Param('id', ParseIdPipe) id: number) {
+    return this.titles.findCast(id);
   }
 
   @Get('genres')

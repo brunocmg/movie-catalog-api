@@ -49,7 +49,7 @@ function uniqueGenres(names: string[]) {
   return [...bySlug].map(([slug, name]) => ({ slug, name }));
 }
 
-const connectGenres = (names: string[]) =>
+export const connectGenres = (names: string[]) =>
   uniqueGenres(names).map((g) => ({
     genre: { connectOrCreate: { where: { slug: g.slug }, create: g } },
   }));
@@ -145,6 +145,20 @@ export class TitlesService {
     } catch (err) {
       throw this.translate(err, type);
     }
+  }
+
+  async findCast(id: number) {
+    await this.findOne(id);
+    return this.prisma.castMember.findMany({
+      where: { titleId: id },
+      orderBy: { position: 'asc' },
+      select: {
+        name: true,
+        character: true,
+        position: true,
+        profileUrl: true,
+      },
+    });
   }
 
   async remove(id: number, type: TitleType): Promise<void> {
