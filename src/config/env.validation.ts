@@ -63,6 +63,24 @@ export class EnvironmentVariables {
   TMDB_API_TOKEN?: string;
 
   @IsOptional()
+  @Matches(/^rediss?:\/\/.+/, {
+    message: 'REDIS_URL must be a redis:// or rediss:// connection string',
+  })
+  REDIS_URL?: string;
+
+  @IsInt()
+  @Min(1)
+  CACHE_TTL_SECONDS: number = 120;
+
+  @Transform(toBoolean)
+  @IsBoolean()
+  METRICS_ENABLED: boolean = true;
+
+  @IsOptional()
+  @IsString()
+  METRICS_TOKEN?: string;
+
+  @IsOptional()
   @IsString()
   CLOUDINARY_CLOUD_NAME?: string;
 

@@ -13,6 +13,8 @@ import { WatchlistModule } from '../watchlist/watchlist.module';
 import { TmdbModule } from '../tmdb/tmdb.module';
 import { RatingsModule } from '../ratings/ratings.module';
 import { StatsModule } from '../stats/stats.module';
+import { CacheModule } from '../cache/cache.module';
+import { MetricsModule } from '../metrics/metrics.module';
 import { TitlesModule } from '../titles/titles.module';
 import { UsersModule } from '../users/users.module';
 import { AuthModule } from '../auth/auth.module';
@@ -39,6 +41,8 @@ const nodeEnv = process.env.NODE_ENV ?? 'development';
       inject: [ConfigService],
       useFactory: throttlerOptions,
     }),
+    MetricsModule,
+    CacheModule,
     TitlesModule,
     MoviesModule,
     SeriesModule,

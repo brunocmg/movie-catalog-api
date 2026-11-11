@@ -5,6 +5,7 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '../../src/app/app.module';
 import { setupApp } from '../../src/app/app.setup';
+import { CacheService } from '../../src/cache/cache.service';
 import { PrismaService } from '../../src/prisma/prisma.service';
 
 export async function createTestApp(
@@ -22,6 +23,7 @@ export async function createTestApp(
 
 export async function resetDatabase(app: INestApplication): Promise<void> {
   const prisma = app.get(PrismaService);
+  await app.get(CacheService).invalidate();
   await prisma.$executeRawUnsafe(
     'TRUNCATE TABLE "refresh_tokens", "ratings", "watchlist", "favorites", "watched_titles", "watched_episodes", "episodes", "seasons", "title_genres", "users", "titles", "genres" RESTART IDENTITY CASCADE',
   );

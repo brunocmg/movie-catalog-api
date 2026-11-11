@@ -13,6 +13,7 @@ import { HashingServiceProtocol } from '../auth/hash/hashing.service';
 import { RefreshTokenService } from '../auth/refresh-token.service';
 import { AuthenticatedUser } from '../auth/types/authenticated-user';
 import { PaginationDto } from '../common/dto/pagination.dto';
+import { CacheService } from '../cache/cache.service';
 import { detectImageType } from '../storage/image';
 import { StorageService } from '../storage/storage.service';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -61,6 +62,7 @@ export class UsersService {
     private readonly hashingService: HashingServiceProtocol,
     private readonly refreshTokens: RefreshTokenService,
     private readonly storage: StorageService,
+    private readonly cache: CacheService,
   ) {}
 
   async findAll(pagination: PaginationDto): Promise<PaginatedUsersDto> {
@@ -179,6 +181,8 @@ export class UsersService {
 
       await tx.user.delete({ where: { id } });
     });
+    // the user's ratings went with the account
+    await this.cache.invalidate();
 
     await this.storage.deleteImage('avatars', String(id)).catch((err) => {
       this.logger.warn(

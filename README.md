@@ -47,6 +47,8 @@ A RESTful API for managing a movie catalog and its users, built with NestJS and 
 - ✅ Security headers (helmet), configurable CORS and rate limiting (stricter on login and sign-up)
 - ✅ Environment validated at boot: the app refuses to start with a clear message
 - ✅ Swagger / OpenAPI documentation
+- ✅ Redis cache for title listings and details (in-memory fallback, invalidated on writes, never blocks the API if Redis is down)
+- ✅ Prometheus metrics at `/metrics`: request rate and latency per route, cache hit ratio
 - ✅ Health check with database probe
 - ✅ Idempotent database seed
 - ✅ Unit and E2E tests (E2E boot the real `AppModule` with the production pipes and filters)
@@ -272,6 +274,10 @@ All variables are validated when the app starts ([env.validation.ts](./src/confi
 | `THROTTLE_AUTH_LIMIT` | | `5` | Login / sign-up attempts per window |
 | `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` | | | Set all three to store images on Cloudinary. Without them images go to the local `files/` folder, which is wiped on each Render deploy |
 | `TMDB_API_TOKEN` | | | TMDB *API Read Access Token*. Without it the `/tmdb` endpoints answer `503` |
+| `REDIS_URL` | | | `redis://` or `rediss://` (TLS, e.g. Upstash). Without it the catalog cache lives in memory. If Redis goes down the API keeps working without cache |
+| `CACHE_TTL_SECONDS` | | `120` | Safety net for cached entries; writes invalidate the cache right away |
+| `METRICS_ENABLED` | | `true` | Serve `/metrics` |
+| `METRICS_TOKEN` | | | When set, `/metrics` requires `Authorization: Bearer <token>` |
 
 `DB_USER`, `DB_PASSWORD` and `DB_NAME` are only used by docker compose to create the database.
 
@@ -344,6 +350,7 @@ Access: 🌐 public · 👤 any authenticated user · 🙋 own account only · �
 | PATCH | `/me` | Update own name/password | 👤 |
 | GET | `/files/*` | Images stored on local disk (only when Cloudinary is not configured) | 🌐 |
 | GET | `/health` | Health check | 🌐 |
+| GET | `/metrics` | Prometheus metrics: request count and latency per route, cache hits/misses, Node runtime. Not in Swagger | 🌐 or token |
 
 ### Authentication flow
 
@@ -440,6 +447,9 @@ npm test
 # E2E tests (needs a running Postgres; migrations are applied automatically)
 npm run test:e2e
 
+# Also run the cache tests against a real Redis (docker compose up -d redis)
+REDIS_URL_TEST=redis://localhost:6379 npm run test:e2e
+
 # Coverage
 npm run test:cov
 ```
@@ -474,7 +484,7 @@ Highlights (full branch-by-branch plan in [docs/ROADMAP.md](./docs/ROADMAP.md)):
 - [x] Ratings and reviews
 - [x] Stats and recommendations
 - [x] Cloud storage
-- [ ] Caching and metrics
+- [x] Caching and metrics
 - [ ] Web front end
 
 ---
