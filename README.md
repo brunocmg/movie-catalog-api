@@ -319,6 +319,8 @@ Access: 🌐 public · 👤 any authenticated user · 🙋 own account only · �
 | GET | `/me/watchlist` | Watchlist, highest priority first (`?type=&limit=&offset=`) | 👤 |
 | PUT | `/me/watchlist/:titleId` | Add to the watchlist or change `priority` (`LOW`/`MEDIUM`/`HIGH`, optional); marking it as watched removes it | 👤 |
 | DELETE | `/me/watchlist/:titleId` | Remove from the watchlist (`204`, idempotent) | 👤 |
+| GET | `/me/stats` | My totals (movies, series, episodes), watch time, top 5 genres and ratings given | 👤 |
+| GET | `/me/recommendations` | Unwatched titles ranked by my taste (watched, favorites, ratings) and community ratings; `?type=&limit=&offset=`. Each item says which genres matched | 👤 |
 | GET | `/titles/:id/cast` | Cast of a title (filled by the TMDB import) | 🌐 |
 | GET | `/titles/:id/reviews` | Written reviews of a title (`?limit=&offset=`), most recent first | 🌐 |
 | GET | `/me/ratings` | My ratings (`?type=&limit=&offset=`) | 👤 |
@@ -467,7 +469,7 @@ Highlights (full branch-by-branch plan in [docs/ROADMAP.md](./docs/ROADMAP.md)):
 - [x] TMDB metadata import
 - [x] Search, filters and sorting
 - [x] Ratings and reviews
-- [ ] Stats and recommendations
+- [x] Stats and recommendations
 - [ ] Cloud storage, caching and metrics
 - [ ] Web front end
 
