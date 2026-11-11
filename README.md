@@ -1,6 +1,8 @@
-# 🎬 Movie Catalog API
+# Movie Catalog API
 
-A RESTful API for managing a movie catalog and its users, built with NestJS and TypeScript. Users can register, authenticate, browse movies and track which ones they've watched.
+A REST API for a movie and series catalog: browse and search titles, rate and review them, and keep personal lists (watched, favorites, watchlist, custom lists), with stats and recommendations based on your taste.
+
+Built with **NestJS**, **TypeScript**, **Prisma** and **PostgreSQL**, and deployed on Render with continuous deployment gated by CI.
 
 [![CI](https://github.com/brunocmg/movie-catalog-api/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/brunocmg/movie-catalog-api/actions/workflows/ci.yml)
 [![Deploy](https://github.com/brunocmg/movie-catalog-api/actions/workflows/deploy-check.yml/badge.svg)](https://github.com/brunocmg/movie-catalog-api/actions/workflows/deploy-check.yml)
@@ -15,7 +17,7 @@ A RESTful API for managing a movie catalog and its users, built with NestJS and 
 
 > **Note:** the API runs on Render's free plan and goes to sleep when idle. The first request can take about a minute to wake it up.
 
-To try the web app without signing up, click **Testar com conta demo** (a regular `USER` account, so it cannot change the catalog).
+To try the web app without signing up, click **Testar com conta demo**. It is a regular `USER` account, so it cannot change the catalog.
 
 ## Screenshots
 
@@ -23,51 +25,129 @@ To try the web app without signing up, click **Testar com conta demo** (a regula
 
 ## Features
 
-- ✅ Movies and series share one `titles` model (type, runtime, synopsis, poster, genres); movies CRUD with pagination, writes restricted to admins
-- ✅ Genres as a table, created on the fly when a title is saved
-- ✅ User registration, update, deletion and avatar upload (JPEG/PNG/WebP, max 3 MB, checked by file signature)
-- ✅ Image storage on Cloudinary in production, local disk in development (avatars and admin-uploaded posters)
-- ✅ JWT access tokens (15 min) + opaque refresh tokens with rotation, reuse detection and logout
-- ✅ Password hashing with bcrypt
-- ✅ Role-based access control (`USER` / `ADMIN`) with `@Auth()` / `@Roles()` and ownership checks
-- ✅ Case-insensitive e-mails (normalized to lower case)
-- ✅ Audit timestamps (`created_at` / `updated_at`) and snake_case columns
-- ✅ Generic login error and constant-time comparison to avoid user enumeration
-- ✅ Guard that re-checks on every request that the user still exists and is active
-- ✅ DTO validation with class-validator / class-transformer
-- ✅ Consistent error responses: 403/404/409 where they belong, no database details leaked, unexpected errors logged with stack trace
-- ✅ Structured JSON logs (pino) with a request id per request, echoed in `X-Request-Id` and in error bodies
-- ✅ Security headers (helmet), configurable CORS and rate limiting (stricter on login and sign-up)
-- ✅ Environment validated at boot: the app refuses to start with a clear message
-- ✅ Swagger / OpenAPI documentation
-- ✅ Redis cache for title listings and details (in-memory fallback, invalidated on writes, never blocks the API if Redis is down)
-- ✅ Prometheus metrics at `/metrics`: request rate and latency per route, cache hit ratio
-- ✅ Health check with database probe
-- ✅ Idempotent database seed
-- ✅ Unit and E2E tests (E2E boot the real `AppModule` with the production pipes and filters)
-- ✅ Multi-stage Docker image (runs `prisma migrate deploy` on start)
-- ✅ GitHub Actions CI (lint, build, unit, E2E with Postgres, Docker build)
+- **Catalog:** movies and series share one model (runtime, synopsis, poster, genres). Search by name, filter by type, genre and year, sort and paginate. Writes are restricted to admins.
+- **Series:** seasons and episodes, with per-episode watch tracking. A series counts as watched when its episodes are.
+- **Personal lists:** watch history, favorites, a watchlist with priority, and custom lists (public or private).
+- **Ratings and reviews:** one score from 1 to 10 per user and title, with an optional review. The average is kept by a database trigger.
+- **Stats and recommendations:** totals, watch time and top genres per user. Unwatched titles are ranked by your taste and community ratings, and each result says which genres matched.
+- **TMDB import:** an admin imports a movie or series with poster, genres, director, cast and, for series, seasons and episodes.
+- **Authentication:** JWT access tokens (15 min) and opaque refresh tokens with rotation, reuse detection and logout. Passwords are hashed with bcrypt.
+- **Authorization:** `USER` and `ADMIN` roles, loaded from the database on every request, so a role change or deactivation applies immediately.
+- **Security:** helmet, configurable CORS, rate limiting (stricter on login and sign-up), generic login errors and constant-time comparison against user enumeration.
+- **Images:** avatars and posters on Cloudinary in production and on local disk in development (JPEG, PNG or WebP, checked by file signature).
+- **Cache:** Redis for title listings and details, with an in-memory fallback. Writes invalidate it, and a Redis outage never blocks the API.
+- **Observability:** structured JSON logs (pino) with a request id echoed in `X-Request-Id` and in error bodies, Prometheus metrics at `/metrics`, and a health check with a database probe.
+- **Quality:** DTO validation, a consistent error format, environment validated at boot, unit and E2E tests, and a multi-stage Docker image.
 
----
+## Main endpoints
 
-## 🛠 Tech Stack
+The full list, with request and response schemas, is in Swagger at `/docs`.
+
+| Area | Endpoints |
+| --- | --- |
+| Auth | `POST /auth/login`, `/auth/refresh`, `/auth/logout`, `/auth/logout-all` |
+| Catalog | `GET /titles`, `/titles/:id`, `/titles/:id/cast`, `/titles/:id/reviews`, `/genres`, `/movies`, `/series` |
+| Series | `GET /series/:id/seasons`, `/seasons/:id/episodes`, `/episodes/:id` |
+| Account | `POST /users`, `GET` and `PATCH /me`, `POST /users/upload` (avatar) |
+| My lists | `/me/watched`, `/me/favorites`, `/me/watchlist`, `/me/ratings`, `/me/lists` |
+| Insights | `GET /me/stats`, `/me/recommendations` |
+| Admin | `POST`, `PATCH` and `DELETE` on movies, series, seasons and episodes; `PUT /titles/:id/poster`; `GET /tmdb/search`; `POST /tmdb/import`; `GET /users` |
+| Ops | `GET /health`, `/metrics` |
+
+`GET /titles` accepts `type`, `q`, `genre`, `year`, `yearFrom`, `yearTo`, `sortBy` (`id`, `name`, `year`, `createdAt`), `order`, `limit` (max 100) and `offset`.
+
+## Tech stack
 
 | Technology | Purpose |
-|---|---|
-| NestJS 11 | Framework |
-| TypeScript | Language |
-| Prisma 7 | ORM and migrations |
-| PostgreSQL 15 | Database |
-| JWT | Authentication |
-| bcrypt | Password hashing |
-| Jest + Supertest | Unit and E2E tests |
+| --- | --- |
+| NestJS 11, TypeScript | Framework and language |
+| Prisma 7, PostgreSQL | ORM, migrations and database |
+| JWT, bcrypt | Authentication and password hashing |
+| Redis (optional) | Cache |
+| Cloudinary | Image storage in production |
 | Swagger | API documentation |
-| Docker / Compose | Containerization |
-| GitHub Actions | Continuous integration |
+| Jest, Supertest | Unit and E2E tests |
+| Docker, GitHub Actions | Containerization and CI |
+| Render, Neon | Hosting and database |
 
----
+## Running locally
 
-## 🗄 Database Schema
+Requires Node.js 24 and Docker.
+
+```bash
+git clone https://github.com/brunocmg/movie-catalog-api.git
+cd movie-catalog-api
+cp .env.example .env     # fill in the values, see Environment variables
+docker compose up --build
+```
+
+Compose waits for Postgres, applies the migrations and starts the API with hot reload at `http://localhost:3000` (docs at `/docs`).
+
+Optionally, seed sample titles, two users (`joao@email.com` / `123456`, `maria@email.com` / `123456`) and an admin (`admin@email.com` / `admin123`):
+
+```bash
+docker compose exec app npx prisma db seed
+```
+
+To run the API outside Docker, start only the database and point `DATABASE_URL` to `localhost`:
+
+```bash
+docker compose up -d db
+npm install
+npx prisma migrate deploy
+npx prisma db seed   # optional
+npm run start:dev
+```
+
+Production image:
+
+```bash
+docker build --target prod -t movie-catalog-api .
+docker run --env-file .env -p 3000:3000 movie-catalog-api
+```
+
+## Usage
+
+1. Register with `POST /users`, then log in with `POST /auth/login` to get an access token and a refresh token.
+2. Send `Authorization: Bearer <accessToken>` on protected routes. In Swagger, use the **Authorize** button.
+3. When the access token expires, `POST /auth/refresh` returns a new pair and revokes the old refresh token.
+
+Refresh tokens are 256-bit random values stored only as SHA-256 hashes. Presenting a token that was already used means it was copied, so the whole session is revoked (reuse detection). Other sessions stay alive.
+
+```mermaid
+sequenceDiagram
+  participant C as Client
+  participant A as API
+  C->>A: POST /auth/login
+  A-->>C: accessToken (15m) + refreshToken R1
+  C->>A: GET /me (Bearer accessToken)
+  Note over C,A: access token expires
+  C->>A: POST /auth/refresh { R1 }
+  A-->>C: new accessToken + R2 (R1 revoked)
+  C->>A: POST /auth/refresh { R1 } (replayed)
+  A-->>C: 401, and R2 is revoked too
+```
+
+Every account is a `USER` by default. In development the seed creates an admin. In production, promote an existing account in the database:
+
+```sql
+UPDATE users SET role = 'ADMIN' WHERE email = 'you@example.com';
+```
+
+Every error has the same shape. `requestId` also comes back in the `X-Request-Id` header and in every log line of that request.
+
+```json
+{
+  "statusCode": 409,
+  "error": "Conflict",
+  "message": "A movie with this name and year already exists",
+  "path": "/movies",
+  "timestamp": "2026-01-01T12:00:00.000Z",
+  "requestId": "5f0c1c1e-8f0a-4a8e-9a43-3f1f0f8d2b6a"
+}
+```
+
+## Database schema
 
 ```mermaid
 erDiagram
@@ -98,8 +178,6 @@ erDiagram
     role role "USER | ADMIN"
     boolean active
     text avatar
-    timestamp created_at
-    timestamp updated_at
   }
   titles {
     int id PK
@@ -113,81 +191,34 @@ erDiagram
     int tmdb_id "unique per type"
     int rating_count "kept by a trigger"
     int rating_sum "kept by a trigger"
-    timestamp created_at
-    timestamp updated_at
   }
   genres {
     int id PK
     text name
     text slug UK
   }
-  title_genres {
-    int title_id PK,FK
-    int genre_id PK,FK
-  }
-  watched_titles {
-    int user_id PK,FK
-    int title_id PK,FK
-    timestamp watched_at
-  }
-  watchlist {
-    int user_id PK,FK
-    int title_id PK,FK
-    priority priority "LOW | MEDIUM | HIGH"
-    timestamp added_at
-  }
-  cast_members {
-    int id PK
-    int title_id FK
-    text name
-    text character
-    int position
-    text profile_url
-  }
   ratings {
     int user_id PK,FK
     int title_id PK,FK
     int score "1 to 10"
     text review
-    timestamp created_at
-    timestamp updated_at
   }
   lists {
     int id PK
     int user_id FK
     text name "unique per user"
-    text description
     boolean is_public
-    timestamp created_at
-    timestamp updated_at
-  }
-  list_items {
-    int list_id PK,FK
-    int title_id PK,FK
-    timestamp added_at
-  }
-  favorites {
-    int user_id PK,FK
-    int title_id PK,FK
-    timestamp created_at
-  }
-  watched_episodes {
-    int user_id PK,FK
-    int episode_id PK,FK
-    timestamp watched_at
   }
   seasons {
     int id PK
     int title_id FK
     int number
-    text name
   }
   episodes {
     int id PK
     int season_id FK
     int number
     text name
-    int runtime_minutes
   }
   refresh_tokens {
     int id PK
@@ -196,319 +227,49 @@ erDiagram
     uuid family_id
     timestamp expires_at
     timestamp revoked_at
-    timestamp created_at
   }
 ```
 
----
+The diagram shows the main tables. The join tables (watched titles, watchlist, favorites, list items, cast and title genres) are in [schema.prisma](./prisma/schema.prisma).
 
-## 🚀 Getting Started
+## Environment variables
 
-### Prerequisites
-
-- [Node.js](https://nodejs.org/) 24
-- [Docker](https://www.docker.com/) and Docker Compose
-
-### 1. Clone the repository
-
-```bash
-git clone https://github.com/brunocmg/movie-catalog-api.git
-cd movie-catalog-api
-```
-
-### 2. Configure environment variables
-
-```bash
-cp .env.example .env
-```
-
-Fill in the values in `.env` (see [Environment Variables](#-environment-variables)).
-
-### 3a. Run with Docker (recommended)
-
-```bash
-docker compose up --build
-```
-
-Compose waits for Postgres to be healthy, applies the migrations and starts the API in watch mode (hot reload) at `http://localhost:3000`.
-
-> After changing dependencies, recreate the container with fresh `node_modules`: `docker compose up --build -V app`.
-
-Seed the database (optional). It creates sample movies, two users (`joao@email.com` / `123456`, `maria@email.com` / `123456`) and an admin (`admin@email.com` / `admin123`):
-
-```bash
-docker compose exec app npx prisma db seed
-```
-
-### 3b. Run locally (without Docker for the API)
-
-```bash
-docker compose up -d db
-npm install
-npx prisma migrate deploy
-npx prisma db seed   # optional
-npm run start:dev
-```
-
-> When running outside Docker, `DATABASE_URL` must point to `localhost` instead of `db`.
-
-### Production image
-
-```bash
-docker build --target prod -t movie-catalog-api .
-docker run --env-file .env -p 3000:3000 movie-catalog-api
-```
-
----
-
-## 🔐 Environment Variables
-
-All variables are validated when the app starts ([env.validation.ts](./src/config/env.validation.ts)). A missing or invalid value stops the boot with a message listing every problem. See [.env.example](./.env.example).
+All variables are validated at startup ([env.validation.ts](./src/config/env.validation.ts)). A missing or invalid value stops the boot with a message listing every problem. See [.env.example](./.env.example).
 
 | Variable | Required | Default | Description |
-|---|---|---|---|
-| `DATABASE_URL` | ✅ | | `postgresql://` connection string |
-| `JWT_SECRET` | ✅ | | At least 32 characters (`openssl rand -base64 48`) |
-| `JWT_TOKEN_AUDIENCE` / `JWT_TOKEN_ISSUER` | ✅ | | JWT `aud` / `iss` claims |
-| `JWT_TTL` | ✅ | | Access token lifetime: `900` (seconds), `15m`, `1h` |
+| --- | --- | --- | --- |
+| `DATABASE_URL` | yes | | `postgresql://` connection string |
+| `JWT_SECRET` | yes | | At least 32 characters (`openssl rand -base64 48`) |
+| `JWT_TOKEN_AUDIENCE`, `JWT_TOKEN_ISSUER` | yes | | JWT `aud` and `iss` claims |
+| `JWT_TTL` | yes | | Access token lifetime: `900` (seconds), `15m`, `1h` |
 | `JWT_REFRESH_TTL` | | `7d` | Refresh token lifetime |
 | `NODE_ENV` | | `development` | `development`, `production` or `test` |
 | `PORT` | | `3000` | HTTP port |
-| `RENDER_GIT_COMMIT` | | | Set by Render; shown as `commit` in `/health` |
-| `LOG_LEVEL` | | `info` | `fatal`, `error`, `warn`, `info`, `debug`, `trace` or `silent` |
+| `LOG_LEVEL` | | `info` | `fatal` to `trace`, or `silent` |
 | `SWAGGER_ENABLED` | | `true` | Serve the docs at `/docs` |
-| `CORS_ORIGINS` | | | `*` or a comma-separated list. Unset: any origin in development, disabled in production |
+| `CORS_ORIGINS` | | | `*` or a comma-separated list of exact origins, without trailing slash. Unset: any origin in development, disabled in production |
 | `TRUST_PROXY` | | `0` | Proxies in front of the app (`1` on Render), so rate limiting sees the real IP |
-| `THROTTLE_TTL_MS` | | `60000` | Rate-limit window |
-| `THROTTLE_LIMIT` | | `100` | Requests per window, any route |
-| `THROTTLE_AUTH_LIMIT` | | `5` | Login / sign-up attempts per window |
+| `THROTTLE_TTL_MS`, `THROTTLE_LIMIT`, `THROTTLE_AUTH_LIMIT` | | `60000`, `100`, `5` | Rate-limit window, requests per window, and login / sign-up attempts per window |
 | `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` | | | Set all three to store images on Cloudinary. Without them images go to the local `files/` folder, which is wiped on each Render deploy |
 | `TMDB_API_TOKEN` | | | TMDB *API Read Access Token*. Without it the `/tmdb` endpoints answer `503` |
-| `REDIS_URL` | | | `redis://` or `rediss://` (TLS, e.g. Upstash). Without it the catalog cache lives in memory. If Redis goes down the API keeps working without cache |
-| `CACHE_TTL_SECONDS` | | `120` | Safety net for cached entries; writes invalidate the cache right away |
-| `METRICS_ENABLED` | | `true` | Serve `/metrics` |
-| `METRICS_TOKEN` | | | When set, `/metrics` requires `Authorization: Bearer <token>` |
+| `REDIS_URL` | | | `redis://` or `rediss://`. Without it the cache lives in memory |
+| `CACHE_TTL_SECONDS` | | `120` | Safety net for cached entries. Writes invalidate the cache right away |
+| `METRICS_ENABLED`, `METRICS_TOKEN` | | `true`, none | Serve `/metrics`. When the token is set, it requires `Authorization: Bearer <token>` |
 
-`DB_USER`, `DB_PASSWORD` and `DB_NAME` are only used by docker compose to create the database.
+`DB_USER`, `DB_PASSWORD` and `DB_NAME` are only used by Docker Compose to create the database. For E2E tests, create a `.env.test` with a `DATABASE_URL` pointing to a **separate** database, because the tests wipe every table.
 
-For E2E tests, create a `.env.test` with the same JWT variables and a `DATABASE_URL` pointing to a **separate** database — the tests wipe every table.
-
----
-
-## 📚 API Documentation
-
-Swagger UI is available at `http://localhost:3000/docs`.
-
-![Swagger](./docs/images/swagger.png)
-
-### Endpoints
-
-Access: 🌐 public · 👤 any authenticated user · 🙋 own account only · 🛡️ admin
-
-| Method | Endpoint | Description | Access |
-|---|---|---|---|
-| POST | `/auth/login` | Log in: access token + refresh token | 🌐 |
-| POST | `/auth/refresh` | New tokens for a refresh token (rotated) | 🌐 |
-| POST | `/auth/logout` | Revoke the session of a refresh token (`204`) | 🌐 |
-| POST | `/auth/logout-all` | Revoke every session of the user (`204`) | 👤 |
-| GET | `/titles` | List and search movies and series. Filters: `type`, `q` (name), `genre` (slug or name), `year`, `yearFrom`, `yearTo`; sort: `sortBy` (`id`, `name`, `year`, `createdAt`) and `order`; plus `limit`/`offset` | 🌐 |
-| GET | `/titles/:id` | Get a movie or series | 🌐 |
-| GET | `/genres` | List genres | 🌐 |
-| GET | `/movies` | List and search movies (same filters as `/titles`, except `type`; `limit` max 100) | 🌐 |
-| GET | `/movies/:id` | Get movie by ID | 🌐 |
-| POST | `/movies` | Create a movie (`genres` is a list of names) | 🛡️ |
-| PATCH | `/movies/:id` | Update a movie | 🛡️ |
-| DELETE | `/movies/:id` | Delete a movie (`204`) | 🛡️ |
-| GET | `/series`, `/series/:id` | List and search series (same filters as `/movies`) / get one | 🌐 |
-| POST | `/series` | Create a series | 🛡️ |
-| PATCH / DELETE | `/series/:id` | Update / delete a series (deleting cascades to seasons and episodes) | 🛡️ |
-| GET | `/series/:id/seasons` | List seasons with episode count | 🌐 |
-| POST | `/series/:id/seasons` | Add a season | 🛡️ |
-| GET | `/seasons/:id`, `/seasons/:id/episodes` | Get a season / list its episodes | 🌐 |
-| PATCH / DELETE | `/seasons/:id` | Update / delete a season | 🛡️ |
-| POST | `/seasons/:id/episodes` | Add an episode | 🛡️ |
-| GET | `/me/watched` | Watch history, most recent first (`?type=&limit=&offset=`), with progress for series | 👤 |
-| GET | `/me/watched/:titleId` | A watched title; `404` if not marked | 👤 |
-| GET | `/me/watched/:titleId/episodes` | Episodes of a series with a `watched` flag | 👤 |
-| PUT / DELETE | `/me/watched/:titleId` | Mark / unmark a movie or a whole series (`204`, idempotent) | 👤 |
-| PUT / DELETE | `/me/watched/episodes/:episodeId` | Mark / unmark one episode; the series follows its episodes | 👤 |
-| GET | `/me/favorites` | Favorites, most recent first (`?type=&limit=&offset=`) | 👤 |
-| PUT / DELETE | `/me/favorites/:titleId` | Add / remove a favorite (`204`, idempotent) | 👤 |
-| GET | `/me/watchlist` | Watchlist, highest priority first (`?type=&limit=&offset=`) | 👤 |
-| PUT | `/me/watchlist/:titleId` | Add to the watchlist or change `priority` (`LOW`/`MEDIUM`/`HIGH`, optional); marking it as watched removes it | 👤 |
-| DELETE | `/me/watchlist/:titleId` | Remove from the watchlist (`204`, idempotent) | 👤 |
-| GET | `/me/stats` | My totals (movies, series, episodes), watch time, top 5 genres and ratings given | 👤 |
-| GET | `/me/recommendations` | Unwatched titles ranked by my taste (watched, favorites, ratings) and community ratings; `?type=&limit=&offset=`. Each item says which genres matched | 👤 |
-| GET | `/titles/:id/cast` | Cast of a title (filled by the TMDB import) | 🌐 |
-| GET | `/titles/:id/reviews` | Written reviews of a title (`?limit=&offset=`), most recent first | 🌐 |
-| GET | `/lists` | Browse public lists (`?limit=&offset=`) | 🌐 |
-| GET | `/lists/:id`, `/lists/:id/items` | A list and its titles in the order added. Private lists answer `404` to everyone but the owner (send the token to read your own) | 🌐 / 👤 |
-| POST | `/me/lists` | Create a list (`name`, `description`, `isPublic`; names are unique per user, max 50 lists) | 👤 |
-| GET | `/me/lists` | My lists, public and private | 👤 |
-| PATCH / DELETE | `/me/lists/:id` | Rename, change visibility / delete a list | 👤 |
-| PUT / DELETE | `/me/lists/:id/items/:titleId` | Add / remove a title (`204`, idempotent, max 500 per list) | 👤 |
-| GET | `/me/ratings` | My ratings (`?type=&limit=&offset=`) | 👤 |
-| GET | `/me/ratings/:titleId` | My rating of a title; `404` if none | 👤 |
-| PUT | `/me/ratings/:titleId` | Rate from 1 to 10 with an optional `review`; one per user and title, a new `PUT` replaces it | 👤 |
-| DELETE | `/me/ratings/:titleId` | Remove my rating (`204`, idempotent) | 👤 |
-| GET | `/tmdb/search` | Search TMDB (`?q=&type=MOVIE|SERIES`) to find the id to import | 🛡️ |
-| POST | `/tmdb/import` | Import a movie or series (`{ tmdbId, type }`) with poster, genres, director, cast and, for series, seasons and episodes. Importing again refreshes it and keeps watch history | 🛡️ |
-| GET | `/episodes/:id` | Get an episode | 🌐 |
-| PATCH / DELETE | `/episodes/:id` | Update / delete an episode | 🛡️ |
-| POST | `/users` | Register a user | 🌐 |
-| GET | `/users` | List users (paginated) | 🛡️ |
-| GET | `/users/:id` | Get a user | 🙋 or 🛡️ |
-| PATCH | `/users/:id` | Update name/password | 🙋 |
-| DELETE | `/users/:id` | Delete a user (`204`); the last admin cannot be deleted | 🙋 or 🛡️ |
-| POST | `/users/upload` | Upload own avatar (`multipart`, field `file`; JPEG, PNG or WebP). Resized to 512x512 on Cloudinary | 👤 |
-| PUT | `/titles/:id/poster` | Upload a poster for a movie or series (`multipart`, field `file`, max 5 MB) | 🛡️ |
-| GET | `/me` | Own account, with role | 👤 |
-| PATCH | `/me` | Update own name/password | 👤 |
-| GET | `/files/*` | Images stored on local disk (only when Cloudinary is not configured) | 🌐 |
-| GET | `/health` | Health check | 🌐 |
-| GET | `/metrics` | Prometheus metrics: request count and latency per route, cache hits/misses, Node runtime. Not in Swagger | 🌐 or token |
-
-### Authentication flow
-
-1. `POST /auth/login` returns a short-lived **access token** (JWT, `Authorization: Bearer ...`) and a **refresh token**.
-2. When the access token expires, `POST /auth/refresh` with the refresh token returns a new pair. The old refresh token stops working (**rotation**).
-3. Presenting a refresh token that was already used means it was copied: the whole session is revoked (**reuse detection**), and both the attacker and the user must log in again. Other sessions stay alive.
-4. `POST /auth/logout` ends one session; `POST /auth/logout-all` and password changes end all of them.
-
-Refresh tokens are 256-bit random values stored only as SHA-256 hashes, so a database leak does not expose usable sessions.
-
-```mermaid
-sequenceDiagram
-  participant C as Client
-  participant A as API
-  C->>A: POST /auth/login
-  A-->>C: accessToken (15m) + refreshToken R1
-  C->>A: GET /me (Bearer accessToken)
-  Note over C,A: access token expires
-  C->>A: POST /auth/refresh { R1 }
-  A-->>C: new accessToken + R2 (R1 revoked)
-  C->>A: POST /auth/refresh { R1 } (replayed)
-  A-->>C: 401, and R2 is revoked too
-```
-
-### Roles
-
-Every account is a `USER` by default. The role is loaded from the database on each request (never trusted from the token), so promoting, demoting or deactivating someone takes effect immediately.
-
-- **Development:** the seed creates `admin@email.com` / `admin123`.
-- **Production:** promote an existing account directly in the database:
-
-  ```sql
-  UPDATE users SET role = 'ADMIN' WHERE email = 'you@example.com';
-  ```
-
-### Error format
-
-Every error has the same shape:
-
-```json
-{
-  "statusCode": 409,
-  "error": "Conflict",
-  "message": "A movie with this name and year already exists",
-  "path": "/movies",
-  "timestamp": "2026-01-01T12:00:00.000Z",
-  "requestId": "5f0c1c1e-8f0a-4a8e-9a43-3f1f0f8d2b6a"
-}
-```
-
-`requestId` is also returned in the `X-Request-Id` header and attached to every log line of that request, so a failing call can be traced in the logs. A safe `X-Request-Id` sent by the client or a proxy is kept.
-
-| Status | When |
-|---|---|
-| `400` | Invalid body, query or id |
-| `401` | Missing, invalid or expired token |
-| `403` | Changing another user's account |
-| `404` | Resource not found |
-| `409` | Duplicated e-mail or movie (name + year) |
-| `429` | Too many requests (login and sign-up: 5 per minute per IP) |
-| `413` / `415` / `422` | Image too large / content is not JPEG, PNG or WebP / missing file or wrong type |
-| `500` | Unexpected error (details only in the server log) |
-
----
-
-## 📁 Project Structure
-
-```
-src/
-├── main.ts
-├── app/          # root module
-├── auth/         # login, JWT config, guard, hashing
-├── users/
-├── movies/
-├── series/       # series, seasons, episodes
-├── prisma/       # PrismaService
-├── health/
-└── common/       # filters, guards, interceptors, middlewares
-prisma/
-├── schema.prisma
-├── migrations/
-└── seed.ts
-test/             # E2E tests and Jest setup
-```
-
----
-
-## 🧪 Running Tests
+## Running tests
 
 ```bash
-# Unit tests
-npm test
-
-# E2E tests (needs a running Postgres; migrations are applied automatically)
-npm run test:e2e
-
-# Also run the cache tests against a real Redis (docker compose up -d redis)
-REDIS_URL_TEST=redis://localhost:6379 npm run test:e2e
-
-# Coverage
-npm run test:cov
+npm test                 # unit tests
+npm run test:e2e         # E2E tests, needs a running Postgres
+npm run test:cov         # coverage
+REDIS_URL_TEST=redis://localhost:6379 npm run test:e2e   # also test the cache against a real Redis
 ```
 
----
+The E2E tests boot the real `AppModule` with the production pipes and filters.
 
-## 🔄 CI
-
-Every pull request and every push to `main` runs on GitHub Actions:
-
-1. `npm ci` + `prisma generate`
-2. ESLint
-3. Build
-4. Unit tests
-5. E2E tests against a Postgres service container
-6. Production Docker image build
-
----
-
-## 🗺 Roadmap
-
-Highlights (full branch-by-branch plan in [docs/ROADMAP.md](./docs/ROADMAP.md)):
-
-- [x] Role-based access control (`USER` / `ADMIN`)
-- [x] Refresh tokens with rotation and logout
-- [x] Structured logging with request id and continuous deployment
-- [x] Unified title model with genres
-- [x] Series, seasons and episodes
-- [x] Watch history, favorites and watchlist
-- [x] TMDB metadata import
-- [x] Search, filters and sorting
-- [x] Ratings and reviews
-- [x] Stats and recommendations
-- [x] Cloud storage
-- [x] Caching and metrics
-- [x] Custom lists, public or private
-- [ ] Web front end (separate repository)
-
----
-
-## 🌐 Deploy
-
-Live API: https://movie-catalog-api-54m7.onrender.com/docs
+## Deploy
 
 Hosted on [Render](https://render.com) (web service, configured in [render.yaml](./render.yaml)) with a [Neon](https://neon.tech) Postgres database.
 
@@ -520,18 +281,57 @@ flowchart LR
   Render --> Check[Deploy check: /health serves the new commit + smoke test]
 ```
 
-- Render deploys only after the CI checks pass on `main` (`autoDeployTrigger: checksPass`).
+- Render deploys only after the CI checks pass on `main`.
 - Migrations run before the app starts, and Render only switches traffic once `/health` answers.
-- The **Deploy check** workflow waits until `/health` reports the merged commit, then runs a smoke test against production. A broken deploy shows up as a failed check on the commit.
+- The **Deploy check** workflow waits until `/health` reports the merged commit, then runs a smoke test against production.
+- The development seed refuses to run when `NODE_ENV=production`, so production accounts are created through `POST /users`.
 
----
+## Limitations
 
-## 🎞 Credits
+- Free-plan hosting: a cold start of about a minute after inactivity.
+- Without Cloudinary configured, uploaded images live on the local disk and disappear on each deploy.
+- Without `TMDB_API_TOKEN`, titles can only be created by hand.
+- Without Redis, the cache is per instance.
+- Refresh tokens are returned in the response body, so the client decides where to store them.
+
+## Project structure
+
+```
+src/
+├── main.ts
+├── app/            # root module and setup (pipes, filters, helmet, CORS)
+├── auth/           # login, refresh tokens, guards, hashing
+├── users/
+├── titles/         # unified movies and series model, genres
+├── movies/
+├── series/         # series, seasons, episodes
+├── watch-history/
+├── favorites/
+├── watchlist/
+├── ratings/
+├── lists/
+├── stats/          # stats and recommendations
+├── tmdb/           # TMDB client and import
+├── storage/        # Cloudinary and local disk
+├── cache/          # Redis and in-memory stores
+├── metrics/
+├── health/
+├── prisma/
+├── config/         # environment validation
+└── common/         # filters, pipes, DTOs, throttling, utils
+prisma/             # schema, migrations and seed
+test/               # E2E tests
+docs/               # images and roadmap
+```
+
+## Credits
 
 This product uses the TMDB API but is not endorsed or certified by [TMDB](https://www.themoviedb.org/).
 
----
+## License
 
-## 📄 License
+[MIT](./LICENSE)
 
-This project is licensed under the [MIT License](./LICENSE).
+## Author
+
+- [Bruno Gomes](https://github.com/brunocmg)
