@@ -31,7 +31,7 @@ Regra para toda branch de feature: migration + testes unitários + **testes e2e 
 
 - [x] **feat/cloud-storage** — avatar e pôsteres no Cloudinary no lugar do disco local (disco continua em dev e nos testes).
 - [x] **feat/caching-and-metrics** — Redis para listagens e detalhes, `/metrics` (Prometheus).
-- [ ] **feat/custom-lists** *(opcional)* — listas do usuário, públicas ou privadas.
+- [x] **feat/custom-lists** *(opcional)* — listas do usuário, públicas ou privadas.
 
 ## Fase D — Front-end
 

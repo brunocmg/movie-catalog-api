@@ -25,7 +25,7 @@ export async function resetDatabase(app: INestApplication): Promise<void> {
   const prisma = app.get(PrismaService);
   await app.get(CacheService).invalidate();
   await prisma.$executeRawUnsafe(
-    'TRUNCATE TABLE "refresh_tokens", "ratings", "watchlist", "favorites", "watched_titles", "watched_episodes", "episodes", "seasons", "title_genres", "users", "titles", "genres" RESTART IDENTITY CASCADE',
+    'TRUNCATE TABLE "refresh_tokens", "list_items", "lists", "ratings", "watchlist", "favorites", "watched_titles", "watched_episodes", "episodes", "seasons", "title_genres", "users", "titles", "genres" RESTART IDENTITY CASCADE',
   );
 }
 

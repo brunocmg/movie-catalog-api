@@ -12,6 +12,7 @@ import { FavoritesModule } from '../favorites/favorites.module';
 import { WatchlistModule } from '../watchlist/watchlist.module';
 import { TmdbModule } from '../tmdb/tmdb.module';
 import { RatingsModule } from '../ratings/ratings.module';
+import { ListsModule } from '../lists/lists.module';
 import { StatsModule } from '../stats/stats.module';
 import { CacheModule } from '../cache/cache.module';
 import { MetricsModule } from '../metrics/metrics.module';
@@ -52,6 +53,7 @@ const nodeEnv = process.env.NODE_ENV ?? 'development';
     TmdbModule,
     RatingsModule,
     StatsModule,
+    ListsModule,
     UsersModule,
     AuthModule,
     HealthModule,
