@@ -9,6 +9,7 @@ import { MoviesModule } from '../movies/movies.module';
 import { SeriesModule } from '../series/series.module';
 import { WatchHistoryModule } from '../watch-history/watch-history.module';
 import { FavoritesModule } from '../favorites/favorites.module';
+import { WatchlistModule } from '../watchlist/watchlist.module';
 import { TitlesModule } from '../titles/titles.module';
 import { UsersModule } from '../users/users.module';
 import { AuthModule } from '../auth/auth.module';
@@ -40,6 +41,7 @@ const nodeEnv = process.env.NODE_ENV ?? 'development';
     SeriesModule,
     WatchHistoryModule,
     FavoritesModule,
+    WatchlistModule,
     UsersModule,
     AuthModule,
     HealthModule,

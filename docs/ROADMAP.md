@@ -21,7 +21,7 @@ Regra para toda branch de feature: migration + testes unitários + **testes e2e 
 - [x] **feat/series** — `Season` e `Episode` (com `runtimeMinutes`) ligados a Title SERIES; `GET/POST /series`, `/series/:id/seasons`, `/seasons/:id/episodes` (escrita só admin).
 - [x] **feat/watch-history** — `PUT/DELETE /me/watched/:titleId`, `GET /me/watched`; `WatchedEpisode` para séries com progresso calculado (x de y episódios).
 - [x] **feat/favorites** — `Favorite(userId, titleId, createdAt)`; `PUT/DELETE /me/favorites/:titleId` idempotentes; `GET /me/favorites` paginado com filtro por tipo.
-- [ ] **feat/watchlist** — mesma estrutura, com `addedAt` e `priority` opcional; marcar como assistido remove da watchlist.
+- [x] **feat/watchlist** — mesma estrutura, com `addedAt` e `priority` opcional; marcar como assistido remove da watchlist.
 - [ ] **feat/tmdb-import** — importação de metadados (sinopse, pôster, gêneros, elenco, duração, temporadas/episódios) pela API do TMDB, só admin.
 - [ ] **feat/search-and-filters** — `?q=` (índice trigram no Postgres), filtros por gênero, ano e tipo, ordenação.
 - [ ] **feat/ratings-and-reviews** — nota de 1 a 10 e review opcional, uma por usuário por título; média e contagem no detalhe do título.
