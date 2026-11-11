@@ -36,6 +36,7 @@ model Title {
 
   genres    TitleGenre[]
   watchedBy WatchedTitle[]
+  seasons   Season[]
 
   @@unique([type, name, year])
   @@index([year])
@@ -108,4 +109,34 @@ model RefreshToken {
   @@index([userId])
   @@index([familyId])
   @@map("refresh_tokens")
+}
+
+model Season {
+  id        Int      @id @default(autoincrement())
+  titleId   Int      @map("title_id")
+  number    Int
+  name      String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  title    Title     @relation(fields: [titleId], references: [id], onDelete: Cascade)
+  episodes Episode[]
+
+  @@unique([titleId, number])
+  @@map("seasons")
+}
+
+model Episode {
+  id             Int      @id @default(autoincrement())
+  seasonId       Int      @map("season_id")
+  number         Int
+  name           String
+  runtimeMinutes Int?     @map("runtime_minutes")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  season Season @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+
+  @@unique([seasonId, number])
+  @@map("episodes")
 }
