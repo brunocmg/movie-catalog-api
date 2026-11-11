@@ -8,7 +8,7 @@ import {
 } from '@nestjs/swagger';
 import { TitlesService } from './titles.service';
 import { GenresService } from './genres.service';
-import { TitleQueryDto } from './dto/title-query.dto';
+import { ListTitlesQueryDto } from './dto/title-search.dto';
 import { PaginatedTitlesDto, ResponseTitleDto } from './dto/response-title.dto';
 import { ResponseGenreDto } from './dto/response-genre.dto';
 import { CastMemberDto } from '../tmdb/dto/tmdb.dto';
@@ -24,14 +24,14 @@ export class TitlesController {
   ) {}
 
   @Get('titles')
-  @ApiOperation({ summary: 'List movies and series (filter with ?type=)' })
+  @ApiOperation({ summary: 'List and search movies and series' })
   @ApiOkResponse({ type: PaginatedTitlesDto })
   @ApiBadRequestResponse({
     description: 'Invalid query params',
     type: ErrorResponseDto,
   })
-  findAll(@Query() { type, ...pagination }: TitleQueryDto) {
-    return this.titles.findAll(pagination, type);
+  findAll(@Query() { type, ...search }: ListTitlesQueryDto) {
+    return this.titles.findAll(search, type);
   }
 
   @Get('titles/:id')

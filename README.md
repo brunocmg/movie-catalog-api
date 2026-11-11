@@ -281,15 +281,15 @@ Access: 🌐 public · 👤 any authenticated user · 🙋 own account only · �
 | POST | `/auth/refresh` | New tokens for a refresh token (rotated) | 🌐 |
 | POST | `/auth/logout` | Revoke the session of a refresh token (`204`) | 🌐 |
 | POST | `/auth/logout-all` | Revoke every session of the user (`204`) | 👤 |
-| GET | `/titles` | List movies and series (`?type=MOVIE|SERIES&limit=&offset=`) | 🌐 |
+| GET | `/titles` | List and search movies and series. Filters: `type`, `q` (name), `genre` (slug or name), `year`, `yearFrom`, `yearTo`; sort: `sortBy` (`id`, `name`, `year`, `createdAt`) and `order`; plus `limit`/`offset` | 🌐 |
 | GET | `/titles/:id` | Get a movie or series | 🌐 |
 | GET | `/genres` | List genres | 🌐 |
-| GET | `/movies` | List movies (`?limit=&offset=`, max 100) | 🌐 |
+| GET | `/movies` | List and search movies (same filters as `/titles`, except `type`; `limit` max 100) | 🌐 |
 | GET | `/movies/:id` | Get movie by ID | 🌐 |
 | POST | `/movies` | Create a movie (`genres` is a list of names) | 🛡️ |
 | PATCH | `/movies/:id` | Update a movie | 🛡️ |
 | DELETE | `/movies/:id` | Delete a movie (`204`) | 🛡️ |
-| GET | `/series`, `/series/:id` | List / get series | 🌐 |
+| GET | `/series`, `/series/:id` | List and search series (same filters as `/movies`) / get one | 🌐 |
 | POST | `/series` | Create a series | 🛡️ |
 | PATCH / DELETE | `/series/:id` | Update / delete a series (deleting cascades to seasons and episodes) | 🛡️ |
 | GET | `/series/:id/seasons` | List seasons with episode count | 🌐 |
@@ -448,7 +448,7 @@ Highlights (full branch-by-branch plan in [docs/ROADMAP.md](./docs/ROADMAP.md)):
 - [x] Series, seasons and episodes
 - [x] Watch history, favorites and watchlist
 - [x] TMDB metadata import
-- [ ] Search, filters and sorting
+- [x] Search, filters and sorting
 - [ ] Ratings, reviews, stats and recommendations
 - [ ] Cloud storage, caching and metrics
 - [ ] Web front end
