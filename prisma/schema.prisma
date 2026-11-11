@@ -76,8 +76,9 @@ model User {
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
-  watchedTitles WatchedTitle[]
-  refreshTokens RefreshToken[]
+  watchedTitles   WatchedTitle[]
+  refreshTokens   RefreshToken[]
+  watchedEpisodes WatchedEpisode[]
 
   @@map("users")
 }
@@ -135,8 +136,22 @@ model Episode {
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 
-  season Season @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  season          Season           @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  watchedEpisodes WatchedEpisode[]
 
   @@unique([seasonId, number])
   @@map("episodes")
+}
+
+model WatchedEpisode {
+  userId    Int      @map("user_id")
+  episodeId Int      @map("episode_id")
+  watchedAt DateTime @default(now()) @map("watched_at")
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  episode Episode @relation(fields: [episodeId], references: [id], onDelete: Cascade)
+
+  @@id([userId, episodeId])
+  @@index([episodeId])
+  @@map("watched_episodes")
 }

@@ -12,7 +12,7 @@ import { CreateTitleDto } from './dto/create-title.dto';
 import { UpdateTitleDto } from './dto/update-title.dto';
 import { PaginatedTitlesDto, ResponseTitleDto } from './dto/response-title.dto';
 
-const titleSelect = {
+export const titleSelect = {
   id: true,
   type: true,
   name: true,
@@ -31,7 +31,10 @@ const titleSelect = {
 
 type TitleRow = Prisma.TitleGetPayload<{ select: typeof titleSelect }>;
 
-const toResponse = ({ genres, ...title }: TitleRow): ResponseTitleDto => ({
+export const toResponse = ({
+  genres,
+  ...title
+}: TitleRow): ResponseTitleDto => ({
   ...title,
   genres: genres.map((g) => g.genre.name),
 });

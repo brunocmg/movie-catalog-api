@@ -19,7 +19,7 @@ Regra para toda branch de feature: migration + testes unitários + **testes e2e 
 
 - [x] **refactor/title-model** — `Movie` → `Title` com `type` (MOVIE/SERIES), `runtimeMinutes`, `synopsis`, `posterUrl`, `tmdbId` (único, opcional); tabela `Genre` N:N migrando o campo texto atual; `WatchedMovie` → `WatchedTitle`; `/movies` continua funcionando como filtro de Title.
 - [x] **feat/series** — `Season` e `Episode` (com `runtimeMinutes`) ligados a Title SERIES; `GET/POST /series`, `/series/:id/seasons`, `/seasons/:id/episodes` (escrita só admin).
-- [ ] **feat/watch-history** — `PUT/DELETE /me/watched/:titleId`, `GET /me/watched`; `WatchedEpisode` para séries com progresso calculado (x de y episódios).
+- [x] **feat/watch-history** — `PUT/DELETE /me/watched/:titleId`, `GET /me/watched`; `WatchedEpisode` para séries com progresso calculado (x de y episódios).
 - [ ] **feat/favorites** — `Favorite(userId, titleId, createdAt)`; `PUT/DELETE /me/favorites/:titleId` idempotentes; `GET /me/favorites` paginado com filtro por tipo.
 - [ ] **feat/watchlist** — mesma estrutura, com `addedAt` e `priority` opcional; marcar como assistido remove da watchlist.
 - [ ] **feat/tmdb-import** — importação de metadados (sinopse, pôster, gêneros, elenco, duração, temporadas/episódios) pela API do TMDB, só admin.
