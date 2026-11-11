@@ -178,6 +178,29 @@ async function main() {
     }
   }
 
+  const joao = await prisma.user.findUniqueOrThrow({
+    where: { email: 'joao@email.com' },
+  });
+  const list = await prisma.list.upsert({
+    where: { userId_name: { userId: joao.id, name: 'Classics' } },
+    update: {},
+    create: {
+      userId: joao.id,
+      name: 'Classics',
+      description: 'Movies worth a rewatch',
+      isPublic: true,
+    },
+  });
+  for (const key of ['the_godfather', 'fight_club'] as const) {
+    await prisma.listItem.upsert({
+      where: {
+        listId_titleId: { listId: list.id, titleId: titleIds[key] },
+      },
+      update: {},
+      create: { listId: list.id, titleId: titleIds[key] },
+    });
+  }
+
   console.log('Seed done');
 }
 

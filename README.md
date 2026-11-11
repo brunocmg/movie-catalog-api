@@ -89,6 +89,9 @@ erDiagram
   titles ||--o{ cast_members : "cast"
   users ||--o{ ratings : rates
   titles ||--o{ ratings : "rated by"
+  users ||--o{ lists : owns
+  lists ||--o{ list_items : contains
+  titles ||--o{ list_items : "listed in"
   users ||--o{ favorites : favorites
   titles ||--o{ favorites : "favorited by"
   users ||--o{ watched_episodes : watches
@@ -155,6 +158,20 @@ erDiagram
     text review
     timestamp created_at
     timestamp updated_at
+  }
+  lists {
+    int id PK
+    int user_id FK
+    text name "unique per user"
+    text description
+    boolean is_public
+    timestamp created_at
+    timestamp updated_at
+  }
+  list_items {
+    int list_id PK,FK
+    int title_id PK,FK
+    timestamp added_at
   }
   favorites {
     int user_id PK,FK
@@ -331,6 +348,12 @@ Access: 🌐 public · 👤 any authenticated user · 🙋 own account only · �
 | GET | `/me/recommendations` | Unwatched titles ranked by my taste (watched, favorites, ratings) and community ratings; `?type=&limit=&offset=`. Each item says which genres matched | 👤 |
 | GET | `/titles/:id/cast` | Cast of a title (filled by the TMDB import) | 🌐 |
 | GET | `/titles/:id/reviews` | Written reviews of a title (`?limit=&offset=`), most recent first | 🌐 |
+| GET | `/lists` | Browse public lists (`?limit=&offset=`) | 🌐 |
+| GET | `/lists/:id`, `/lists/:id/items` | A list and its titles in the order added. Private lists answer `404` to everyone but the owner (send the token to read your own) | 🌐 / 👤 |
+| POST | `/me/lists` | Create a list (`name`, `description`, `isPublic`; names are unique per user, max 50 lists) | 👤 |
+| GET | `/me/lists` | My lists, public and private | 👤 |
+| PATCH / DELETE | `/me/lists/:id` | Rename, change visibility / delete a list | 👤 |
+| PUT / DELETE | `/me/lists/:id/items/:titleId` | Add / remove a title (`204`, idempotent, max 500 per list) | 👤 |
 | GET | `/me/ratings` | My ratings (`?type=&limit=&offset=`) | 👤 |
 | GET | `/me/ratings/:titleId` | My rating of a title; `404` if none | 👤 |
 | PUT | `/me/ratings/:titleId` | Rate from 1 to 10 with an optional `review`; one per user and title, a new `PUT` replaces it | 👤 |
@@ -485,7 +508,8 @@ Highlights (full branch-by-branch plan in [docs/ROADMAP.md](./docs/ROADMAP.md)):
 - [x] Stats and recommendations
 - [x] Cloud storage
 - [x] Caching and metrics
-- [ ] Web front end
+- [x] Custom lists, public or private
+- [ ] Web front end (separate repository)
 
 ---
 

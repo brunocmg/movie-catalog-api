@@ -19,3 +19,9 @@ export const CurrentUser = createParamDecorator(
     return user;
   },
 );
+
+/** The user behind an `@OptionalAuth()` route, or undefined for anonymous calls. */
+export const OptionalUser = createParamDecorator(
+  (_data: unknown, ctx: ExecutionContext): AuthenticatedUser | undefined =>
+    ctx.switchToHttp().getRequest<AuthenticatedRequest>().user,
+);
