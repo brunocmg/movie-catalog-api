@@ -84,6 +84,8 @@ erDiagram
   users ||--o{ watchlist : "plans to watch"
   titles ||--o{ watchlist : "listed in"
   titles ||--o{ cast_members : "cast"
+  users ||--o{ ratings : rates
+  titles ||--o{ ratings : "rated by"
   users ||--o{ favorites : favorites
   titles ||--o{ favorites : "favorited by"
   users ||--o{ watched_episodes : watches
@@ -109,7 +111,9 @@ erDiagram
     text synopsis
     text poster_url
     int runtime_minutes
-    int tmdb_id UK
+    int tmdb_id "unique per type"
+    int rating_count "kept by a trigger"
+    int rating_sum "kept by a trigger"
     timestamp created_at
     timestamp updated_at
   }
@@ -140,6 +144,14 @@ erDiagram
     text character
     int position
     text profile_url
+  }
+  ratings {
+    int user_id PK,FK
+    int title_id PK,FK
+    int score "1 to 10"
+    text review
+    timestamp created_at
+    timestamp updated_at
   }
   favorites {
     int user_id PK,FK
@@ -308,6 +320,11 @@ Access: 🌐 public · 👤 any authenticated user · 🙋 own account only · �
 | PUT | `/me/watchlist/:titleId` | Add to the watchlist or change `priority` (`LOW`/`MEDIUM`/`HIGH`, optional); marking it as watched removes it | 👤 |
 | DELETE | `/me/watchlist/:titleId` | Remove from the watchlist (`204`, idempotent) | 👤 |
 | GET | `/titles/:id/cast` | Cast of a title (filled by the TMDB import) | 🌐 |
+| GET | `/titles/:id/reviews` | Written reviews of a title (`?limit=&offset=`), most recent first | 🌐 |
+| GET | `/me/ratings` | My ratings (`?type=&limit=&offset=`) | 👤 |
+| GET | `/me/ratings/:titleId` | My rating of a title; `404` if none | 👤 |
+| PUT | `/me/ratings/:titleId` | Rate from 1 to 10 with an optional `review`; one per user and title, a new `PUT` replaces it | 👤 |
+| DELETE | `/me/ratings/:titleId` | Remove my rating (`204`, idempotent) | 👤 |
 | GET | `/tmdb/search` | Search TMDB (`?q=&type=MOVIE|SERIES`) to find the id to import | 🛡️ |
 | POST | `/tmdb/import` | Import a movie or series (`{ tmdbId, type }`) with poster, genres, director, cast and, for series, seasons and episodes. Importing again refreshes it and keeps watch history | 🛡️ |
 | GET | `/episodes/:id` | Get an episode | 🌐 |
@@ -442,14 +459,15 @@ Every pull request and every push to `main` runs on GitHub Actions:
 Highlights (full branch-by-branch plan in [docs/ROADMAP.md](./docs/ROADMAP.md)):
 
 - [x] Role-based access control (`USER` / `ADMIN`)
-- [ ] Refresh tokens with rotation and logout
+- [x] Refresh tokens with rotation and logout
 - [x] Structured logging with request id and continuous deployment
 - [x] Unified title model with genres
 - [x] Series, seasons and episodes
 - [x] Watch history, favorites and watchlist
 - [x] TMDB metadata import
 - [x] Search, filters and sorting
-- [ ] Ratings, reviews, stats and recommendations
+- [x] Ratings and reviews
+- [ ] Stats and recommendations
 - [ ] Cloud storage, caching and metrics
 - [ ] Web front end
 

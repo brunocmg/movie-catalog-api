@@ -39,6 +39,8 @@ model Title {
   posterUrl      String?   @map("poster_url")
   runtimeMinutes Int?      @map("runtime_minutes")
   tmdbId         Int?      @map("tmdb_id")
+  ratingCount    Int       @default(0) @map("rating_count")
+  ratingSum      Int       @default(0) @map("rating_sum")
   createdAt      DateTime  @default(now()) @map("created_at")
   updatedAt      DateTime  @updatedAt @map("updated_at")
 
@@ -48,6 +50,7 @@ model Title {
   favorites Favorite[]
   watchlist WatchlistItem[]
   cast      CastMember[]
+  ratings   Rating[]
 
   @@unique([type, name, year])
   @@unique([type, tmdbId])
@@ -94,6 +97,7 @@ model User {
   watchedEpisodes WatchedEpisode[]
   favorites       Favorite[]
   watchlist       WatchlistItem[]
+  ratings         Rating[]
 
   @@map("users")
 }
@@ -210,4 +214,20 @@ model CastMember {
 
   @@index([titleId, position])
   @@map("cast_members")
+}
+
+model Rating {
+  userId    Int      @map("user_id")
+  titleId   Int      @map("title_id")
+  score     Int
+  review    String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title Title @relation(fields: [titleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, titleId])
+  @@index([titleId])
+  @@map("ratings")
 }

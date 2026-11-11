@@ -21,6 +21,8 @@ export const titleSelect = {
   synopsis: true,
   posterUrl: true,
   runtimeMinutes: true,
+  ratingCount: true,
+  ratingSum: true,
   createdAt: true,
   updatedAt: true,
   genres: {
@@ -33,10 +35,18 @@ type TitleRow = Prisma.TitleGetPayload<{ select: typeof titleSelect }>;
 
 export const toResponse = ({
   genres,
+  ratingCount,
+  ratingSum,
   ...title
 }: TitleRow): ResponseTitleDto => ({
   ...title,
   genres: genres.map((g) => g.genre.name),
+  rating: {
+    average: ratingCount
+      ? Math.round((ratingSum / ratingCount) * 10) / 10
+      : null,
+    count: ratingCount,
+  },
 });
 
 // one entry per slug, so "Drama" and "drama" do not collide
