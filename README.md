@@ -81,6 +81,8 @@ erDiagram
   genres ||--o{ title_genres : groups
   titles ||--o{ seasons : "has (series)"
   seasons ||--o{ episodes : has
+  users ||--o{ favorites : favorites
+  titles ||--o{ favorites : "favorited by"
   users ||--o{ watched_episodes : watches
   episodes ||--o{ watched_episodes : "watched by"
   users ||--o{ refresh_tokens : "has sessions"
@@ -121,6 +123,11 @@ erDiagram
     int user_id PK,FK
     int title_id PK,FK
     timestamp watched_at
+  }
+  favorites {
+    int user_id PK,FK
+    int title_id PK,FK
+    timestamp created_at
   }
   watched_episodes {
     int user_id PK,FK
@@ -277,6 +284,8 @@ Access: 🌐 public · 👤 any authenticated user · 🙋 own account only · �
 | GET | `/me/watched/:titleId/episodes` | Episodes of a series with a `watched` flag | 👤 |
 | PUT / DELETE | `/me/watched/:titleId` | Mark / unmark a movie or a whole series (`204`, idempotent) | 👤 |
 | PUT / DELETE | `/me/watched/episodes/:episodeId` | Mark / unmark one episode; the series follows its episodes | 👤 |
+| GET | `/me/favorites` | Favorites, most recent first (`?type=&limit=&offset=`) | 👤 |
+| PUT / DELETE | `/me/favorites/:titleId` | Add / remove a favorite (`204`, idempotent) | 👤 |
 | GET | `/episodes/:id` | Get an episode | 🌐 |
 | PATCH / DELETE | `/episodes/:id` | Update / delete an episode | 🛡️ |
 | POST | `/users` | Register a user | 🌐 |

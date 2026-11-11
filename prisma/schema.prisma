@@ -37,6 +37,7 @@ model Title {
   genres    TitleGenre[]
   watchedBy WatchedTitle[]
   seasons   Season[]
+  favorites Favorite[]
 
   @@unique([type, name, year])
   @@index([year])
@@ -79,6 +80,7 @@ model User {
   watchedTitles   WatchedTitle[]
   refreshTokens   RefreshToken[]
   watchedEpisodes WatchedEpisode[]
+  favorites       Favorite[]
 
   @@map("users")
 }
@@ -154,4 +156,17 @@ model WatchedEpisode {
   @@id([userId, episodeId])
   @@index([episodeId])
   @@map("watched_episodes")
+}
+
+model Favorite {
+  userId    Int      @map("user_id")
+  titleId   Int      @map("title_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title Title @relation(fields: [titleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, titleId])
+  @@index([titleId])
+  @@map("favorites")
 }
