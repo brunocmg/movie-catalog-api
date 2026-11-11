@@ -1,7 +1,13 @@
 import { Test } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
 import { RatingsService } from './ratings.service';
+import { CacheService } from '../cache/cache.service';
 import { PrismaService } from '../prisma/prisma.service';
+
+const cacheMock = {
+  wrap: jest.fn((_key: string, loader: () => Promise<unknown>) => loader()),
+  invalidate: jest.fn(),
+};
 
 const prismaMock = {
   $transaction: jest.fn(),
@@ -27,6 +33,7 @@ describe('RatingsService', () => {
       providers: [
         RatingsService,
         { provide: PrismaService, useValue: prismaMock },
+        { provide: CacheService, useValue: cacheMock },
       ],
     }).compile();
     service = module.get(RatingsService);
@@ -77,10 +84,30 @@ describe('RatingsService', () => {
   });
 
   it('removing is a plain delete scoped to the user', async () => {
+    prismaMock.rating.deleteMany.mockResolvedValue({ count: 1 });
+
     await service.remove(1, 9);
 
     expect(prismaMock.rating.deleteMany).toHaveBeenCalledWith({
       where: { userId: 1, titleId: 9 },
     });
+    expect(cacheMock.invalidate).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the cache when there was nothing to remove', async () => {
+    prismaMock.rating.deleteMany.mockResolvedValue({ count: 0 });
+
+    await service.remove(1, 9);
+
+    expect(cacheMock.invalidate).not.toHaveBeenCalled();
+  });
+
+  it('drops the cached titles after rating', async () => {
+    prismaMock.title.findUnique.mockResolvedValue({ id: 9 });
+    prismaMock.rating.upsert.mockResolvedValue({});
+
+    await service.rate(1, 9, { score: 5 });
+
+    expect(cacheMock.invalidate).toHaveBeenCalledTimes(1);
   });
 });

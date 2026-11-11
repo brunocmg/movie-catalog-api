@@ -8,6 +8,7 @@ import { TitleType } from '@prisma/client';
 import { TitlesService } from './titles.service';
 import { SortOrder, TitleSortBy } from './dto/title-search.dto';
 import { PrismaService } from '../prisma/prisma.service';
+import { CacheService } from '../cache/cache.service';
 import { StorageService } from '../storage/storage.service';
 
 const prismaMock = {
@@ -20,6 +21,11 @@ const prismaMock = {
     delete: jest.fn(),
     count: jest.fn(),
   },
+};
+
+const cacheMock = {
+  wrap: jest.fn((_key: string, loader: () => Promise<unknown>) => loader()),
+  invalidate: jest.fn(),
 };
 
 const storageMock = {
@@ -46,6 +52,7 @@ describe('TitlesService', () => {
 
   beforeEach(async () => {
     jest.resetAllMocks();
+    cacheMock.wrap.mockImplementation((_key, loader) => loader());
     prismaMock.$transaction.mockImplementation((queries: Promise<unknown>[]) =>
       Promise.all(queries),
     );
@@ -55,6 +62,7 @@ describe('TitlesService', () => {
         TitlesService,
         { provide: PrismaService, useValue: prismaMock },
         { provide: StorageService, useValue: storageMock },
+        { provide: CacheService, useValue: cacheMock },
       ],
     }).compile();
 

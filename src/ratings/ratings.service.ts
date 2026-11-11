@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma, TitleType } from '@prisma/client';
+import { CacheService } from '../cache/cache.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { PaginationDto } from '../common/dto/pagination.dto';
 import { titleSelect, toResponse } from '../titles/titles.service';
@@ -21,7 +22,10 @@ const ratingSelect = {
 
 @Injectable()
 export class RatingsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly cache: CacheService,
+  ) {}
 
   async rate(
     userId: number,
@@ -36,16 +40,21 @@ export class RatingsService {
 
     const review = dto.review || null;
     // titles.rating_count/rating_sum are kept by a trigger on ratings
-    return this.prisma.rating.upsert({
+    const rating = await this.prisma.rating.upsert({
       where: { userId_titleId: { userId, titleId } },
       update: { score: dto.score, review },
       create: { userId, titleId, score: dto.score, review },
       select: ratingSelect,
     });
+    await this.cache.invalidate();
+    return rating;
   }
 
   async remove(userId: number, titleId: number): Promise<void> {
-    await this.prisma.rating.deleteMany({ where: { userId, titleId } });
+    const { count } = await this.prisma.rating.deleteMany({
+      where: { userId, titleId },
+    });
+    if (count > 0) await this.cache.invalidate();
   }
 
   async findMine(userId: number, titleId: number): Promise<RatingDto> {

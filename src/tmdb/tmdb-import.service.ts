@@ -4,6 +4,7 @@ import {
   Injectable,
 } from '@nestjs/common';
 import { Prisma, TitleType } from '@prisma/client';
+import { CacheService } from '../cache/cache.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { isPrismaKnownError, PrismaErrorCode } from '../prisma/prisma-errors';
 import { connectGenres, TitlesService } from '../titles/titles.service';
@@ -21,6 +22,7 @@ export class TmdbImportService {
     private readonly prisma: PrismaService,
     private readonly tmdb: TmdbClient,
     private readonly titles: TitlesService,
+    private readonly cache: CacheService,
   ) {}
 
   search(type: TitleType, query: string): Promise<TmdbSearchResult[]> {
@@ -39,6 +41,7 @@ export class TmdbImportService {
         (tx) => this.save(tx, data, data.year as number),
         { timeout: TX_TIMEOUT_MS },
       );
+      await this.cache.invalidate();
       return await this.titles.findOne(id, type);
     } catch (err) {
       if (isPrismaKnownError(err, PrismaErrorCode.UniqueConstraint)) {

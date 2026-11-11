@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { Prisma, TitleType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { CacheService } from '../cache/cache.service';
 import { detectImageType } from '../storage/image';
 import { StorageService } from '../storage/storage.service';
 import { isPrismaKnownError, PrismaErrorCode } from '../prisma/prisma-errors';
@@ -108,6 +109,7 @@ export class TitlesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly storage: StorageService,
+    private readonly cache: CacheService,
   ) {}
 
   async create(
@@ -128,6 +130,7 @@ export class TitlesService {
         },
         select: titleSelect,
       });
+      await this.cache.invalidate();
       return toResponse(title);
     } catch (err) {
       throw this.translate(err, type);
@@ -140,28 +143,34 @@ export class TitlesService {
   ): Promise<PaginatedTitlesDto> {
     const { limit = 10, offset = 0 } = search;
     const where = buildWhere(search, type);
+    const { q, genre, year, yearFrom, yearTo, sortBy, order } = search;
+    const key = `titles:list:${JSON.stringify([type, q, genre, year, yearFrom, yearTo, sortBy, order, limit, offset])}`;
 
-    const [rows, total] = await this.prisma.$transaction([
-      this.prisma.title.findMany({
-        where,
-        orderBy: buildOrderBy(search),
-        take: limit,
-        skip: offset,
-        select: titleSelect,
-      }),
-      this.prisma.title.count({ where }),
-    ]);
+    return this.cache.wrap(key, async () => {
+      const [rows, total] = await this.prisma.$transaction([
+        this.prisma.title.findMany({
+          where,
+          orderBy: buildOrderBy(search),
+          take: limit,
+          skip: offset,
+          select: titleSelect,
+        }),
+        this.prisma.title.count({ where }),
+      ]);
 
-    return { data: rows.map(toResponse), meta: { limit, offset, total } };
+      return { data: rows.map(toResponse), meta: { limit, offset, total } };
+    });
   }
 
-  async findOne(id: number, type?: TitleType): Promise<ResponseTitleDto> {
-    const title = await this.prisma.title.findFirst({
-      where: { id, type },
-      select: titleSelect,
+  findOne(id: number, type?: TitleType): Promise<ResponseTitleDto> {
+    return this.cache.wrap(`titles:one:${id}:${type ?? 'any'}`, async () => {
+      const title = await this.prisma.title.findFirst({
+        where: { id, type },
+        select: titleSelect,
+      });
+      if (!title) throw new NotFoundException(`${label(type)} not found`);
+      return toResponse(title);
     });
-    if (!title) throw new NotFoundException(`${label(type)} not found`);
-    return toResponse(title);
   }
 
   async update(
@@ -186,6 +195,7 @@ export class TitlesService {
         },
         select: titleSelect,
       });
+      await this.cache.invalidate();
       return toResponse(title);
     } catch (err) {
       throw this.translate(err, type);
@@ -212,6 +222,7 @@ export class TitlesService {
     } catch (err) {
       throw this.translate(err, type);
     }
+    await this.cache.invalidate();
 
     await this.storage.deleteImage('posters', String(id)).catch((err) => {
       this.logger.warn(
@@ -241,6 +252,7 @@ export class TitlesService {
         data: { posterUrl },
         select: titleSelect,
       });
+      await this.cache.invalidate();
       return toResponse(title);
     } catch (err) {
       throw this.translate(err, undefined);

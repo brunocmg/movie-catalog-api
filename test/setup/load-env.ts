@@ -9,3 +9,6 @@ process.env.LOG_LEVEL = 'silent';
 delete process.env.CLOUDINARY_CLOUD_NAME;
 delete process.env.CLOUDINARY_API_KEY;
 delete process.env.CLOUDINARY_API_SECRET;
+delete process.env.REDIS_URL;
+delete process.env.METRICS_TOKEN;
+delete process.env.METRICS_ENABLED;
