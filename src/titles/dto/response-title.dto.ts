@@ -2,6 +2,19 @@ import { ApiProperty } from '@nestjs/swagger';
 import { TitleType } from '@prisma/client';
 import { PaginationMetaDto } from '../../common/dto/pagination.dto';
 
+export class RatingSummaryDto {
+  @ApiProperty({
+    example: 8.4,
+    nullable: true,
+    description:
+      'Average score from 1 to 10, one decimal. Null without ratings.',
+  })
+  average: number | null;
+
+  @ApiProperty({ example: 12 })
+  count: number;
+}
+
 export class ResponseTitleDto {
   @ApiProperty({ example: 1 })
   id: number;
@@ -32,6 +45,9 @@ export class ResponseTitleDto {
 
   @ApiProperty({ type: [String], example: ['Drama', 'Thriller'] })
   genres: string[];
+
+  @ApiProperty({ type: RatingSummaryDto })
+  rating: RatingSummaryDto;
 
   @ApiProperty({ example: '2026-01-01T12:00:00.000Z' })
   createdAt: Date;
