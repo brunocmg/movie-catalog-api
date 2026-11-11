@@ -162,7 +162,9 @@ export class UsersController {
   @UseInterceptors(
     FileInterceptor('file', { limits: { fileSize: MAX_AVATAR_SIZE } }),
   )
-  @ApiOperation({ summary: 'Upload the own avatar (JPEG or PNG, max 3 MB)' })
+  @ApiOperation({
+    summary: 'Upload the own avatar (JPEG, PNG or WebP, max 3 MB)',
+  })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
     schema: {
@@ -183,7 +185,11 @@ export class UsersController {
     @CurrentUser() user: AuthenticatedUser,
     @UploadedFile(
       new ParseFilePipeBuilder()
-        .addFileTypeValidator({ fileType: /^image\/(jpeg|png)$/ })
+        .addFileTypeValidator({
+          fileType: /^image\/(jpeg|png|webp)$/,
+          // the service checks the file signature itself
+          skipMagicNumbersValidation: true,
+        })
         .addMaxSizeValidator({ maxSize: MAX_AVATAR_SIZE })
         .build({ errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY }),
     )

@@ -62,6 +62,18 @@ export class EnvironmentVariables {
   @IsString()
   TMDB_API_TOKEN?: string;
 
+  @IsOptional()
+  @IsString()
+  CLOUDINARY_CLOUD_NAME?: string;
+
+  @IsOptional()
+  @IsString()
+  CLOUDINARY_API_KEY?: string;
+
+  @IsOptional()
+  @IsString()
+  CLOUDINARY_API_SECRET?: string;
+
   @Matches(/^postgres(ql)?:\/\/.+/, {
     message: 'DATABASE_URL must be a postgresql:// connection string',
   })
@@ -126,6 +138,17 @@ export function validateEnv(
   });
 
   const errors = validateSync(env, { skipMissingProperties: false });
+
+  const cloudinary = [
+    env.CLOUDINARY_CLOUD_NAME,
+    env.CLOUDINARY_API_KEY,
+    env.CLOUDINARY_API_SECRET,
+  ];
+  if (cloudinary.some(Boolean) && !cloudinary.every(Boolean)) {
+    throw new Error(
+      'Invalid environment configuration:\n  - CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET must be set together',
+    );
+  }
 
   if (errors.length > 0) {
     const details = errors

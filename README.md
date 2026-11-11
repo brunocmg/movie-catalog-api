@@ -32,7 +32,8 @@ A RESTful API for managing a movie catalog and its users, built with NestJS and 
 
 - ✅ Movies and series share one `titles` model (type, runtime, synopsis, poster, genres); movies CRUD with pagination, writes restricted to admins
 - ✅ Genres as a table, created on the fly when a title is saved
-- ✅ User registration, update, deletion and avatar upload (JPEG/PNG, max 3 MB)
+- ✅ User registration, update, deletion and avatar upload (JPEG/PNG/WebP, max 3 MB, checked by file signature)
+- ✅ Image storage on Cloudinary in production, local disk in development (avatars and admin-uploaded posters)
 - ✅ JWT access tokens (15 min) + opaque refresh tokens with rotation, reuse detection and logout
 - ✅ Password hashing with bcrypt
 - ✅ Role-based access control (`USER` / `ADMIN`) with `@Auth()` / `@Roles()` and ownership checks
@@ -269,6 +270,7 @@ All variables are validated when the app starts ([env.validation.ts](./src/confi
 | `THROTTLE_TTL_MS` | | `60000` | Rate-limit window |
 | `THROTTLE_LIMIT` | | `100` | Requests per window, any route |
 | `THROTTLE_AUTH_LIMIT` | | `5` | Login / sign-up attempts per window |
+| `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` | | | Set all three to store images on Cloudinary. Without them images go to the local `files/` folder, which is wiped on each Render deploy |
 | `TMDB_API_TOKEN` | | | TMDB *API Read Access Token*. Without it the `/tmdb` endpoints answer `503` |
 
 `DB_USER`, `DB_PASSWORD` and `DB_NAME` are only used by docker compose to create the database.
@@ -336,10 +338,11 @@ Access: 🌐 public · 👤 any authenticated user · 🙋 own account only · �
 | GET | `/users/:id` | Get a user | 🙋 or 🛡️ |
 | PATCH | `/users/:id` | Update name/password | 🙋 |
 | DELETE | `/users/:id` | Delete a user (`204`); the last admin cannot be deleted | 🙋 or 🛡️ |
-| POST | `/users/upload` | Upload own avatar | 👤 |
+| POST | `/users/upload` | Upload own avatar (`multipart`, field `file`; JPEG, PNG or WebP). Resized to 512x512 on Cloudinary | 👤 |
+| PUT | `/titles/:id/poster` | Upload a poster for a movie or series (`multipart`, field `file`, max 5 MB) | 🛡️ |
 | GET | `/me` | Own account, with role | 👤 |
 | PATCH | `/me` | Update own name/password | 👤 |
-| GET | `/files/:name` | Serve uploaded avatars | 🌐 |
+| GET | `/files/*` | Images stored on local disk (only when Cloudinary is not configured) | 🌐 |
 | GET | `/health` | Health check | 🌐 |
 
 ### Authentication flow
@@ -401,7 +404,7 @@ Every error has the same shape:
 | `404` | Resource not found |
 | `409` | Duplicated e-mail or movie (name + year) |
 | `429` | Too many requests (login and sign-up: 5 per minute per IP) |
-| `413` / `422` | Avatar too large / wrong type |
+| `413` / `415` / `422` | Image too large / content is not JPEG, PNG or WebP / missing file or wrong type |
 | `500` | Unexpected error (details only in the server log) |
 
 ---
@@ -470,7 +473,8 @@ Highlights (full branch-by-branch plan in [docs/ROADMAP.md](./docs/ROADMAP.md)):
 - [x] Search, filters and sorting
 - [x] Ratings and reviews
 - [x] Stats and recommendations
-- [ ] Cloud storage, caching and metrics
+- [x] Cloud storage
+- [ ] Caching and metrics
 - [ ] Web front end
 
 ---
