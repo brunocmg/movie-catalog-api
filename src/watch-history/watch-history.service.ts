@@ -85,6 +85,7 @@ export class WatchHistoryService {
         update: {},
         create: { userId, titleId },
       }),
+      this.prisma.watchlistItem.deleteMany({ where: { userId, titleId } }),
     ];
     if (title.type === TitleType.SERIES) {
       ops.push(
@@ -121,6 +122,7 @@ export class WatchHistoryService {
         update: {},
         create: { userId, titleId },
       }),
+      this.prisma.watchlistItem.deleteMany({ where: { userId, titleId } }),
     ]);
   }
 

@@ -81,6 +81,8 @@ erDiagram
   genres ||--o{ title_genres : groups
   titles ||--o{ seasons : "has (series)"
   seasons ||--o{ episodes : has
+  users ||--o{ watchlist : "plans to watch"
+  titles ||--o{ watchlist : "listed in"
   users ||--o{ favorites : favorites
   titles ||--o{ favorites : "favorited by"
   users ||--o{ watched_episodes : watches
@@ -123,6 +125,12 @@ erDiagram
     int user_id PK,FK
     int title_id PK,FK
     timestamp watched_at
+  }
+  watchlist {
+    int user_id PK,FK
+    int title_id PK,FK
+    priority priority "LOW | MEDIUM | HIGH"
+    timestamp added_at
   }
   favorites {
     int user_id PK,FK
@@ -286,6 +294,9 @@ Access: 🌐 public · 👤 any authenticated user · 🙋 own account only · �
 | PUT / DELETE | `/me/watched/episodes/:episodeId` | Mark / unmark one episode; the series follows its episodes | 👤 |
 | GET | `/me/favorites` | Favorites, most recent first (`?type=&limit=&offset=`) | 👤 |
 | PUT / DELETE | `/me/favorites/:titleId` | Add / remove a favorite (`204`, idempotent) | 👤 |
+| GET | `/me/watchlist` | Watchlist, highest priority first (`?type=&limit=&offset=`) | 👤 |
+| PUT | `/me/watchlist/:titleId` | Add to the watchlist or change `priority` (`LOW`/`MEDIUM`/`HIGH`, optional); marking it as watched removes it | 👤 |
+| DELETE | `/me/watchlist/:titleId` | Remove from the watchlist (`204`, idempotent) | 👤 |
 | GET | `/episodes/:id` | Get an episode | 🌐 |
 | PATCH / DELETE | `/episodes/:id` | Update / delete an episode | 🛡️ |
 | POST | `/users` | Register a user | 🌐 |
@@ -422,7 +433,7 @@ Highlights (full branch-by-branch plan in [docs/ROADMAP.md](./docs/ROADMAP.md)):
 - [x] Structured logging with request id and continuous deployment
 - [x] Unified title model with genres
 - [x] Series, seasons and episodes
-- [ ] Watch history, favorites and watchlist
+- [x] Watch history, favorites and watchlist
 - [ ] TMDB metadata import
 - [ ] Search, filters and sorting
 - [ ] Ratings, reviews, stats and recommendations

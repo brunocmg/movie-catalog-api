@@ -8,6 +8,7 @@ const prismaMock = {
   $transaction: jest.fn(),
   $queryRaw: jest.fn(),
   title: { findUnique: jest.fn(), findFirst: jest.fn() },
+  watchlistItem: { deleteMany: jest.fn() },
   episode: { findUnique: jest.fn(), findMany: jest.fn() },
   watchedTitle: {
     findUnique: jest.fn(),
