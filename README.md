@@ -30,7 +30,8 @@ A RESTful API for managing a movie catalog and its users, built with NestJS and 
 
 ## ✨ Features
 
-- ✅ CRUD for movies with pagination (unique per name + year), writes restricted to admins
+- ✅ Movies and series share one `titles` model (type, runtime, synopsis, poster, genres); movies CRUD with pagination, writes restricted to admins
+- ✅ Genres as a table, created on the fly when a title is saved
 - ✅ User registration, update, deletion and avatar upload (JPEG/PNG, max 3 MB)
 - ✅ JWT access tokens (15 min) + opaque refresh tokens with rotation, reuse detection and logout
 - ✅ Password hashing with bcrypt
@@ -74,13 +75,15 @@ A RESTful API for managing a movie catalog and its users, built with NestJS and 
 
 ```mermaid
 erDiagram
-  users ||--o{ watched_movies : watches
-  movies ||--o{ watched_movies : "watched by"
+  users ||--o{ watched_titles : watches
+  titles ||--o{ watched_titles : "watched by"
+  titles ||--o{ title_genres : has
+  genres ||--o{ title_genres : groups
   users ||--o{ refresh_tokens : "has sessions"
   users {
     int id PK
     text name
-    text email UK "lower-cased"
+    text email UK
     text password_hash
     role role "USER | ADMIN"
     boolean active
@@ -88,24 +91,37 @@ erDiagram
     timestamp created_at
     timestamp updated_at
   }
-  movies {
+  titles {
     int id PK
-    text name "unique with year"
-    text genre
-    text director
+    title_type type "MOVIE | SERIES"
+    text name
     int year
+    text director
+    text synopsis
+    text poster_url
+    int runtime_minutes
+    int tmdb_id UK
     timestamp created_at
     timestamp updated_at
   }
-  watched_movies {
+  genres {
+    int id PK
+    text name
+    text slug UK
+  }
+  title_genres {
+    int title_id PK,FK
+    int genre_id PK,FK
+  }
+  watched_titles {
     int user_id PK,FK
-    int movie_id PK,FK
+    int title_id PK,FK
     timestamp watched_at
   }
   refresh_tokens {
     int id PK
     int user_id FK
-    text token_hash UK "sha-256"
+    text token_hash UK
     uuid family_id
     timestamp expires_at
     timestamp revoked_at
@@ -218,9 +234,12 @@ Access: 🌐 public · 👤 any authenticated user · 🙋 own account only · �
 | POST | `/auth/refresh` | New tokens for a refresh token (rotated) | 🌐 |
 | POST | `/auth/logout` | Revoke the session of a refresh token (`204`) | 🌐 |
 | POST | `/auth/logout-all` | Revoke every session of the user (`204`) | 👤 |
+| GET | `/titles` | List movies and series (`?type=MOVIE|SERIES&limit=&offset=`) | 🌐 |
+| GET | `/titles/:id` | Get a movie or series | 🌐 |
+| GET | `/genres` | List genres | 🌐 |
 | GET | `/movies` | List movies (`?limit=&offset=`, max 100) | 🌐 |
 | GET | `/movies/:id` | Get movie by ID | 🌐 |
-| POST | `/movies` | Create a movie | 🛡️ |
+| POST | `/movies` | Create a movie (`genres` is a list of names) | 🛡️ |
 | PATCH | `/movies/:id` | Update a movie | 🛡️ |
 | DELETE | `/movies/:id` | Delete a movie (`204`) | 🛡️ |
 | POST | `/users` | Register a user | 🌐 |
@@ -354,7 +373,8 @@ Highlights (full branch-by-branch plan in [docs/ROADMAP.md](./docs/ROADMAP.md)):
 - [x] Role-based access control (`USER` / `ADMIN`)
 - [ ] Refresh tokens with rotation and logout
 - [x] Structured logging with request id and continuous deployment
-- [ ] Series, seasons and episodes (genres as a proper relation)
+- [x] Unified title model with genres
+- [ ] Series, seasons and episodes
 - [ ] Watch history, favorites and watchlist
 - [ ] TMDB metadata import
 - [ ] Search, filters and sorting

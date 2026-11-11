@@ -6,6 +6,7 @@ import { ServeStaticModule } from '@nestjs/serve-static';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { join } from 'node:path';
 import { MoviesModule } from '../movies/movies.module';
+import { TitlesModule } from '../titles/titles.module';
 import { UsersModule } from '../users/users.module';
 import { AuthModule } from '../auth/auth.module';
 import { HealthModule } from '../health/health.module';
@@ -31,6 +32,7 @@ const nodeEnv = process.env.NODE_ENV ?? 'development';
       inject: [ConfigService],
       useFactory: throttlerOptions,
     }),
+    TitlesModule,
     MoviesModule,
     UsersModule,
     AuthModule,

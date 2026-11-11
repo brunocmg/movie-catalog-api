@@ -1,97 +1,159 @@
 import 'dotenv/config';
 import { Pool } from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
-import { PrismaClient, Role } from '.prisma/client';
+import { PrismaClient, Role, TitleType } from '.prisma/client';
 import * as bcrypt from 'bcryptjs';
 
-const connectionString = `${process.env.DATABASE_URL}`;
-const pool = new Pool({ connectionString });
-const adapter = new PrismaPg(pool);
-const prisma = new PrismaClient({ adapter });
+const pool = new Pool({ connectionString: `${process.env.DATABASE_URL}` });
+const prisma = new PrismaClient({ adapter: new PrismaPg(pool) });
 
-const moviesSeed = {
-  twenty_one: { name: '21', year: 2008 },
-  the_godfather: { name: 'The Godfather', year: 1972 },
-  the_dark_knight: { name: 'The Dark Knight', year: 2008 },
-  forrest_gump: { name: 'Forrest Gump', year: 1994 },
-  fight_club: { name: 'Fight Club', year: 1999 },
+const slugify = (value: string) =>
+  value
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+
+const titlesSeed = {
+  twenty_one: {
+    type: TitleType.MOVIE,
+    name: '21',
+    year: 2008,
+    director: 'Robert Luketic',
+    runtimeMinutes: 123,
+    genres: ['Drama', 'Crime'],
+  },
+  the_godfather: {
+    type: TitleType.MOVIE,
+    name: 'The Godfather',
+    year: 1972,
+    director: 'Francis Ford Coppola',
+    runtimeMinutes: 175,
+    genres: ['Drama', 'Crime'],
+  },
+  the_dark_knight: {
+    type: TitleType.MOVIE,
+    name: 'The Dark Knight',
+    year: 2008,
+    director: 'Christopher Nolan',
+    runtimeMinutes: 152,
+    genres: ['Action', 'Crime', 'Drama'],
+  },
+  forrest_gump: {
+    type: TitleType.MOVIE,
+    name: 'Forrest Gump',
+    year: 1994,
+    director: 'Robert Zemeckis',
+    runtimeMinutes: 142,
+    genres: ['Drama', 'Romance'],
+  },
+  fight_club: {
+    type: TitleType.MOVIE,
+    name: 'Fight Club',
+    year: 1999,
+    director: 'David Fincher',
+    runtimeMinutes: 139,
+    genres: ['Drama', 'Thriller'],
+  },
+  breaking_bad: {
+    type: TitleType.SERIES,
+    name: 'Breaking Bad',
+    year: 2008,
+    runtimeMinutes: 47,
+    genres: ['Drama', 'Crime', 'Thriller'],
+  },
 } as const;
 
-type MovieKey = keyof typeof moviesSeed;
+type TitleKey = keyof typeof titlesSeed;
 
 const usersSeed: {
   email: string;
   name: string;
   password: string;
   role?: Role;
-  movies: MovieKey[];
+  watched: TitleKey[];
 }[] = [
   {
     email: 'admin@email.com',
     name: 'Admin',
     password: 'admin123',
     role: Role.ADMIN,
-    movies: [],
+    watched: [],
   },
   {
     email: 'joao@email.com',
     name: 'Joao',
     password: '123456',
-    movies: ['twenty_one', 'fight_club'],
+    watched: ['twenty_one', 'fight_club'],
   },
   {
     email: 'maria@email.com',
     name: 'Maria',
     password: '123456',
-    movies: ['the_godfather', 'forrest_gump'],
+    watched: ['the_godfather', 'forrest_gump'],
   },
 ];
 
-function ensureMovie(data: { name: string; year: number }) {
-  return prisma.movie.upsert({
-    where: { name_year: data },
+async function upsertTitle(seed: (typeof titlesSeed)[TitleKey]) {
+  const { genres, ...data } = seed;
+
+  const title = await prisma.title.upsert({
+    where: {
+      type_name_year: { type: data.type, name: data.name, year: data.year },
+    },
     update: {},
     create: data,
   });
+
+  for (const name of genres) {
+    const genre = await prisma.genre.upsert({
+      where: { slug: slugify(name) },
+      update: {},
+      create: { name, slug: slugify(name) },
+    });
+    await prisma.titleGenre.upsert({
+      where: { titleId_genreId: { titleId: title.id, genreId: genre.id } },
+      update: {},
+      create: { titleId: title.id, genreId: genre.id },
+    });
+  }
+
+  return title;
 }
 
 async function main() {
   if (process.env.NODE_ENV === 'production') {
-    throw new Error('Seed de desenvolvimento: não rode em produção.');
+    throw new Error('Development seed: do not run it in production.');
   }
 
-  const movieIds = {} as Record<MovieKey, number>;
-  for (const key of Object.keys(moviesSeed) as MovieKey[]) {
-    const movie = await ensureMovie(moviesSeed[key]);
-    movieIds[key] = movie.id;
+  const titleIds = {} as Record<TitleKey, number>;
+  for (const key of Object.keys(titlesSeed) as TitleKey[]) {
+    titleIds[key] = (await upsertTitle(titlesSeed[key])).id;
   }
 
   for (const u of usersSeed) {
     const passwordHash = await bcrypt.hash(u.password, 10);
+    const role = u.role ?? Role.USER;
 
     const user = await prisma.user.upsert({
       where: { email: u.email },
-      update: { passwordHash, role: u.role ?? Role.USER },
-      create: {
-        email: u.email,
-        name: u.name,
-        passwordHash,
-        role: u.role ?? Role.USER,
-      },
+      update: { passwordHash, role },
+      create: { email: u.email, name: u.name, passwordHash, role },
     });
 
-    for (const key of u.movies) {
-      await prisma.watchedMovie.upsert({
+    for (const key of u.watched) {
+      await prisma.watchedTitle.upsert({
         where: {
-          userId_movieId: { userId: user.id, movieId: movieIds[key] },
+          userId_titleId: { userId: user.id, titleId: titleIds[key] },
         },
         update: {},
-        create: { userId: user.id, movieId: movieIds[key] },
+        create: { userId: user.id, titleId: titleIds[key] },
       });
     }
   }
 
-  console.log('Seed concluído');
+  console.log('Seed done');
 }
 
 main()

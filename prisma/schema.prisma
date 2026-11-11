@@ -7,27 +7,61 @@ datasource db {
   provider = "postgresql"
 }
 
-model Movie {
-  id        Int      @id @default(autoincrement())
-  name      String
-  genre     String?
-  director  String?
-  year      Int
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  watchedBy WatchedMovie[]
-
-  @@unique([name, year])
-  @@index([year])
-  @@map("movies")
-}
-
 enum Role {
   USER
   ADMIN
 
   @@map("role")
+}
+
+enum TitleType {
+  MOVIE
+  SERIES
+
+  @@map("title_type")
+}
+
+model Title {
+  id             Int       @id @default(autoincrement())
+  type           TitleType
+  name           String
+  year           Int
+  director       String?
+  synopsis       String?
+  posterUrl      String?   @map("poster_url")
+  runtimeMinutes Int?      @map("runtime_minutes")
+  tmdbId         Int?      @unique @map("tmdb_id")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  genres    TitleGenre[]
+  watchedBy WatchedTitle[]
+
+  @@unique([type, name, year])
+  @@index([year])
+  @@map("titles")
+}
+
+model Genre {
+  id   Int    @id @default(autoincrement())
+  name String
+  slug String @unique
+
+  titles TitleGenre[]
+
+  @@map("genres")
+}
+
+model TitleGenre {
+  titleId Int @map("title_id")
+  genreId Int @map("genre_id")
+
+  title Title @relation(fields: [titleId], references: [id], onDelete: Cascade)
+  genre Genre @relation(fields: [genreId], references: [id], onDelete: Cascade)
+
+  @@id([titleId, genreId])
+  @@index([genreId])
+  @@map("title_genres")
 }
 
 model User {
@@ -41,23 +75,23 @@ model User {
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
-  watchedMovies WatchedMovie[]
+  watchedTitles WatchedTitle[]
   refreshTokens RefreshToken[]
 
   @@map("users")
 }
 
-model WatchedMovie {
+model WatchedTitle {
   userId    Int      @map("user_id")
-  movieId   Int      @map("movie_id")
+  titleId   Int      @map("title_id")
   watchedAt DateTime @default(now()) @map("watched_at")
 
   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  movie Movie @relation(fields: [movieId], references: [id], onDelete: Cascade)
+  title Title @relation(fields: [titleId], references: [id], onDelete: Cascade)
 
-  @@id([userId, movieId])
-  @@index([movieId])
-  @@map("watched_movies")
+  @@id([userId, titleId])
+  @@index([titleId])
+  @@map("watched_titles")
 }
 
 model RefreshToken {
