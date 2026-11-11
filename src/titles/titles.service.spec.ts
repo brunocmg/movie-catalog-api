@@ -1,9 +1,14 @@
 import { Test } from '@nestjs/testing';
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  NotFoundException,
+  UnsupportedMediaTypeException,
+} from '@nestjs/common';
 import { TitleType } from '@prisma/client';
 import { TitlesService } from './titles.service';
 import { SortOrder, TitleSortBy } from './dto/title-search.dto';
 import { PrismaService } from '../prisma/prisma.service';
+import { StorageService } from '../storage/storage.service';
 
 const prismaMock = {
   $transaction: jest.fn(),
@@ -15,6 +20,11 @@ const prismaMock = {
     delete: jest.fn(),
     count: jest.fn(),
   },
+};
+
+const storageMock = {
+  saveImage: jest.fn(),
+  deleteImage: jest.fn(),
 };
 
 const prismaError = (code: string) =>
@@ -44,6 +54,7 @@ describe('TitlesService', () => {
       providers: [
         TitlesService,
         { provide: PrismaService, useValue: prismaMock },
+        { provide: StorageService, useValue: storageMock },
       ],
     }).compile();
 
@@ -195,6 +206,61 @@ describe('TitlesService', () => {
       ][];
       expect(calls[0][0].data.genres?.deleteMany).toEqual({});
       expect(calls[1][0].data.genres).toBeUndefined();
+    });
+  });
+
+  describe('posters', () => {
+    const PNG = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10, 0]);
+
+    it('stores the image and saves its URL on the title', async () => {
+      prismaMock.title.findFirst.mockResolvedValue(row);
+      storageMock.saveImage.mockResolvedValue('https://cdn.example/posters/1');
+      prismaMock.title.update.mockResolvedValue({
+        ...row,
+        posterUrl: 'https://cdn.example/posters/1',
+      });
+
+      const res = await service.setPoster(1, PNG);
+
+      expect(storageMock.saveImage).toHaveBeenCalledWith({
+        folder: 'posters',
+        name: '1',
+        buffer: PNG,
+        type: 'png',
+      });
+      expect(res.posterUrl).toBe('https://cdn.example/posters/1');
+    });
+
+    it('rejects files that are not images without storing them', async () => {
+      await expect(
+        service.setPoster(1, Buffer.from('not an image')),
+      ).rejects.toThrow(UnsupportedMediaTypeException);
+      expect(storageMock.saveImage).not.toHaveBeenCalled();
+    });
+
+    it('does not store a poster for an unknown title', async () => {
+      prismaMock.title.findFirst.mockResolvedValue(null);
+
+      await expect(service.setPoster(9, PNG)).rejects.toThrow(
+        NotFoundException,
+      );
+      expect(storageMock.saveImage).not.toHaveBeenCalled();
+    });
+
+    it('removes the stored poster when the title is deleted', async () => {
+      prismaMock.title.delete.mockResolvedValue(row);
+      storageMock.deleteImage.mockResolvedValue(undefined);
+
+      await service.remove(1, TitleType.MOVIE);
+
+      expect(storageMock.deleteImage).toHaveBeenCalledWith('posters', '1');
+    });
+
+    it('still deletes the title when the storage cleanup fails', async () => {
+      prismaMock.title.delete.mockResolvedValue(row);
+      storageMock.deleteImage.mockRejectedValue(new Error('down'));
+
+      await expect(service.remove(1, TitleType.MOVIE)).resolves.toBeUndefined();
     });
   });
 });

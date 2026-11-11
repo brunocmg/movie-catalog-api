@@ -1,10 +1,14 @@
 import {
   ConflictException,
   Injectable,
+  Logger,
   NotFoundException,
+  UnsupportedMediaTypeException,
 } from '@nestjs/common';
 import { Prisma, TitleType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { detectImageType } from '../storage/image';
+import { StorageService } from '../storage/storage.service';
 import { isPrismaKnownError, PrismaErrorCode } from '../prisma/prisma-errors';
 import { slugify } from '../common/utils/slug';
 import { SortOrder, TitleSearchDto, TitleSortBy } from './dto/title-search.dto';
@@ -99,7 +103,12 @@ const label = (type?: TitleType) =>
 
 @Injectable()
 export class TitlesService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly logger = new Logger(TitlesService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly storage: StorageService,
+  ) {}
 
   async create(
     type: TitleType,
@@ -203,9 +212,42 @@ export class TitlesService {
     } catch (err) {
       throw this.translate(err, type);
     }
+
+    await this.storage.deleteImage('posters', String(id)).catch((err) => {
+      this.logger.warn(
+        `Could not remove the poster of title ${id}: ${String(err)}`,
+      );
+    });
   }
 
-  private translate(err: unknown, type: TitleType): unknown {
+  async setPoster(id: number, buffer: Buffer): Promise<ResponseTitleDto> {
+    const type = detectImageType(buffer);
+    if (!type) {
+      throw new UnsupportedMediaTypeException(
+        'Only JPEG, PNG and WebP images are allowed',
+      );
+    }
+    await this.findOne(id);
+
+    const posterUrl = await this.storage.saveImage({
+      folder: 'posters',
+      name: String(id),
+      buffer,
+      type,
+    });
+    try {
+      const title = await this.prisma.title.update({
+        where: { id },
+        data: { posterUrl },
+        select: titleSelect,
+      });
+      return toResponse(title);
+    } catch (err) {
+      throw this.translate(err, undefined);
+    }
+  }
+
+  private translate(err: unknown, type?: TitleType): unknown {
     if (isPrismaKnownError(err, PrismaErrorCode.RecordNotFound)) {
       return new NotFoundException(`${label(type)} not found`);
     }

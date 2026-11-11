@@ -2,18 +2,19 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
   UnsupportedMediaTypeException,
 } from '@nestjs/common';
 import { Role } from '@prisma/client';
-import * as path from 'node:path';
-import * as fs from 'node:fs/promises';
 import { PrismaService } from '../prisma/prisma.service';
 import { isPrismaKnownError, PrismaErrorCode } from '../prisma/prisma-errors';
 import { HashingServiceProtocol } from '../auth/hash/hashing.service';
 import { RefreshTokenService } from '../auth/refresh-token.service';
 import { AuthenticatedUser } from '../auth/types/authenticated-user';
 import { PaginationDto } from '../common/dto/pagination.dto';
+import { detectImageType } from '../storage/image';
+import { StorageService } from '../storage/storage.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { PaginatedUsersDto, ResponseUserDto } from './dto/response-user.dto';
@@ -22,11 +23,6 @@ type UploadedAvatarFile = {
   originalname: string;
   mimetype: string;
   buffer: Buffer;
-};
-
-const EXTENSION_BY_MIMETYPE: Record<string, string> = {
-  'image/jpeg': 'jpg',
-  'image/png': 'png',
 };
 
 const userSelect = {
@@ -58,10 +54,13 @@ const isAdmin = (user: AuthenticatedUser) => user.role === Role.ADMIN;
 
 @Injectable()
 export class UsersService {
+  private readonly logger = new Logger(UsersService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly hashingService: HashingServiceProtocol,
     private readonly refreshTokens: RefreshTokenService,
+    private readonly storage: StorageService,
   ) {}
 
   async findAll(pagination: PaginationDto): Promise<PaginatedUsersDto> {
@@ -180,27 +179,37 @@ export class UsersService {
 
       await tx.user.delete({ where: { id } });
     });
+
+    await this.storage.deleteImage('avatars', String(id)).catch((err) => {
+      this.logger.warn(
+        `Could not remove the avatar of user ${id}: ${String(err)}`,
+      );
+    });
   }
 
   async uploadAvatarImage(
     requester: AuthenticatedUser,
     file: UploadedAvatarFile,
   ): Promise<ResponseUserDto> {
-    const extension = EXTENSION_BY_MIMETYPE[file.mimetype];
-    if (!extension) {
-      throw new UnsupportedMediaTypeException('Only JPEG and PNG are allowed');
+    const type = detectImageType(file.buffer);
+    if (!type) {
+      throw new UnsupportedMediaTypeException(
+        'Only JPEG, PNG and WebP images are allowed',
+      );
     }
 
-    // built from the id and the mimetype, never from the uploaded name
-    const fileName = `${requester.id}.${extension}`;
-    const uploadDir = path.resolve(process.cwd(), 'files');
-    await fs.mkdir(uploadDir, { recursive: true });
-    await fs.writeFile(path.join(uploadDir, fileName), file.buffer);
+    // named after the user id, never after the uploaded name
+    const avatar = await this.storage.saveImage({
+      folder: 'avatars',
+      name: String(requester.id),
+      buffer: file.buffer,
+      type,
+    });
 
     try {
       const user = await this.prisma.user.update({
         where: { id: requester.id },
-        data: { avatar: fileName },
+        data: { avatar },
         select: userSelect,
       });
       return toResponse(user);
