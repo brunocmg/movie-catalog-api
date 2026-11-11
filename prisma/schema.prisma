@@ -38,7 +38,7 @@ model Title {
   synopsis       String?
   posterUrl      String?   @map("poster_url")
   runtimeMinutes Int?      @map("runtime_minutes")
-  tmdbId         Int?      @unique @map("tmdb_id")
+  tmdbId         Int?      @map("tmdb_id")
   createdAt      DateTime  @default(now()) @map("created_at")
   updatedAt      DateTime  @updatedAt @map("updated_at")
 
@@ -47,8 +47,10 @@ model Title {
   seasons   Season[]
   favorites Favorite[]
   watchlist WatchlistItem[]
+  cast      CastMember[]
 
   @@unique([type, name, year])
+  @@unique([type, tmdbId])
   @@index([year])
   @@map("titles")
 }
@@ -193,4 +195,18 @@ model WatchlistItem {
   @@id([userId, titleId])
   @@index([titleId])
   @@map("watchlist")
+}
+
+model CastMember {
+  id         Int     @id @default(autoincrement())
+  titleId    Int     @map("title_id")
+  name       String
+  character  String?
+  position   Int
+  profileUrl String? @map("profile_url")
+
+  title Title @relation(fields: [titleId], references: [id], onDelete: Cascade)
+
+  @@index([titleId, position])
+  @@map("cast_members")
 }

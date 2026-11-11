@@ -83,6 +83,7 @@ erDiagram
   seasons ||--o{ episodes : has
   users ||--o{ watchlist : "plans to watch"
   titles ||--o{ watchlist : "listed in"
+  titles ||--o{ cast_members : "cast"
   users ||--o{ favorites : favorites
   titles ||--o{ favorites : "favorited by"
   users ||--o{ watched_episodes : watches
@@ -131,6 +132,14 @@ erDiagram
     int title_id PK,FK
     priority priority "LOW | MEDIUM | HIGH"
     timestamp added_at
+  }
+  cast_members {
+    int id PK
+    int title_id FK
+    text name
+    text character
+    int position
+    text profile_url
   }
   favorites {
     int user_id PK,FK
@@ -248,6 +257,7 @@ All variables are validated when the app starts ([env.validation.ts](./src/confi
 | `THROTTLE_TTL_MS` | | `60000` | Rate-limit window |
 | `THROTTLE_LIMIT` | | `100` | Requests per window, any route |
 | `THROTTLE_AUTH_LIMIT` | | `5` | Login / sign-up attempts per window |
+| `TMDB_API_TOKEN` | | | TMDB *API Read Access Token*. Without it the `/tmdb` endpoints answer `503` |
 
 `DB_USER`, `DB_PASSWORD` and `DB_NAME` are only used by docker compose to create the database.
 
@@ -297,6 +307,9 @@ Access: 🌐 public · 👤 any authenticated user · 🙋 own account only · �
 | GET | `/me/watchlist` | Watchlist, highest priority first (`?type=&limit=&offset=`) | 👤 |
 | PUT | `/me/watchlist/:titleId` | Add to the watchlist or change `priority` (`LOW`/`MEDIUM`/`HIGH`, optional); marking it as watched removes it | 👤 |
 | DELETE | `/me/watchlist/:titleId` | Remove from the watchlist (`204`, idempotent) | 👤 |
+| GET | `/titles/:id/cast` | Cast of a title (filled by the TMDB import) | 🌐 |
+| GET | `/tmdb/search` | Search TMDB (`?q=&type=MOVIE|SERIES`) to find the id to import | 🛡️ |
+| POST | `/tmdb/import` | Import a movie or series (`{ tmdbId, type }`) with poster, genres, director, cast and, for series, seasons and episodes. Importing again refreshes it and keeps watch history | 🛡️ |
 | GET | `/episodes/:id` | Get an episode | 🌐 |
 | PATCH / DELETE | `/episodes/:id` | Update / delete an episode | 🛡️ |
 | POST | `/users` | Register a user | 🌐 |
@@ -434,7 +447,7 @@ Highlights (full branch-by-branch plan in [docs/ROADMAP.md](./docs/ROADMAP.md)):
 - [x] Unified title model with genres
 - [x] Series, seasons and episodes
 - [x] Watch history, favorites and watchlist
-- [ ] TMDB metadata import
+- [x] TMDB metadata import
 - [ ] Search, filters and sorting
 - [ ] Ratings, reviews, stats and recommendations
 - [ ] Cloud storage, caching and metrics
@@ -459,6 +472,12 @@ flowchart LR
 - Render deploys only after the CI checks pass on `main` (`autoDeployTrigger: checksPass`).
 - Migrations run before the app starts, and Render only switches traffic once `/health` answers.
 - The **Deploy check** workflow waits until `/health` reports the merged commit, then runs a smoke test against production. A broken deploy shows up as a failed check on the commit.
+
+---
+
+## 🎞 Credits
+
+This product uses the TMDB API but is not endorsed or certified by [TMDB](https://www.themoviedb.org/).
 
 ---
 

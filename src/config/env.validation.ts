@@ -58,6 +58,10 @@ export class EnvironmentVariables {
   @IsString()
   RENDER_GIT_COMMIT?: string;
 
+  @IsOptional()
+  @IsString()
+  TMDB_API_TOKEN?: string;
+
   @Matches(/^postgres(ql)?:\/\/.+/, {
     message: 'DATABASE_URL must be a postgresql:// connection string',
   })
