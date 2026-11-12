@@ -4,10 +4,6 @@ A REST API for a movie and series catalog: browse and search titles, rate and re
 
 Built with **NestJS**, **TypeScript**, **Prisma** and **PostgreSQL**, and deployed on Render with continuous deployment gated by CI.
 
-[![CI](https://github.com/brunocmg/movie-catalog-api/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/brunocmg/movie-catalog-api/actions/workflows/ci.yml)
-[![Deploy](https://github.com/brunocmg/movie-catalog-api/actions/workflows/deploy-check.yml/badge.svg)](https://github.com/brunocmg/movie-catalog-api/actions/workflows/deploy-check.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
-
 ## Live demo
 
 | | |
@@ -21,7 +17,13 @@ To try the web app without signing up, click **Testar com conta demo**. It is a 
 
 ## Screenshots
 
+API docs (Swagger):
+
 ![Swagger UI](./docs/images/swagger.png)
+
+A simple web front end ([repository](https://github.com/brunocmg/movie-catalog-web)) built only to try the API:
+
+![Movie Catalog web app](./docs/images/web.png)
 
 ## Features
 
