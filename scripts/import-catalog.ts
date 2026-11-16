@@ -7,6 +7,9 @@
  *   ADMIN_EMAIL=... ADMIN_PASSWORD=... \
  *   npx tsx scripts/import-catalog.ts
  *
+ * With TMDB_API_TOKEN set, it then tops up to TARGET_MOVIES (default 200) and
+ * TARGET_SERIES (default 80) using TMDB's top rated lists.
+ *
  * Re-running is safe: existing titles are refreshed, not duplicated.
  */
 
@@ -84,6 +87,10 @@ interface SearchResult {
 const API_URL = (process.env.API_URL ?? '').replace(/\/+$/, '');
 const EMAIL = process.env.ADMIN_EMAIL;
 const PASSWORD = process.env.ADMIN_PASSWORD;
+// optional: with a TMDB token, the curated list is topped up with TMDB's top rated
+const TMDB_TOKEN = process.env.TMDB_API_TOKEN;
+const TARGET_MOVIES = Number(process.env.TARGET_MOVIES ?? 200);
+const TARGET_SERIES = Number(process.env.TARGET_SERIES ?? 80);
 
 async function call<T>(
   path: string,
@@ -143,9 +150,28 @@ async function main() {
     body: JSON.stringify({ email: EMAIL, password: PASSWORD }),
   });
 
-  let ok = 0;
   const failed: string[] = [];
+  const seen = new Set<string>(); // "TYPE:tmdbId" already imported in this run
+  const count: Record<Kind, number> = { MOVIE: 0, SERIES: 0 };
 
+  const importOne = async (type: Kind, tmdbId: number, label: string) => {
+    try {
+      await call(
+        '/tmdb/import',
+        { method: 'POST', body: JSON.stringify({ type, tmdbId }) },
+        accessToken,
+      );
+      seen.add(`${type}:${tmdbId}`);
+      count[type]++;
+      console.log(`OK    ${label}`);
+    } catch (e) {
+      failed.push(label);
+      console.log(`FAIL  ${label}: ${(e as Error).message}`);
+    }
+    await sleep(400);
+  };
+
+  // 1) the curated list, matched by name and year
   for (const [type, name, year] of CATALOG) {
     const label = `${name} (${year})`;
     try {
@@ -156,26 +182,56 @@ async function main() {
       );
       const match = pick(results, name, year);
       if (!match) throw new Error('no TMDB match');
-
-      await call(
-        '/tmdb/import',
-        {
-          method: 'POST',
-          body: JSON.stringify({ type, tmdbId: match.tmdbId }),
-        },
-        accessToken,
-      );
-      ok++;
-      console.log(`OK    ${label}`);
+      await importOne(type, match.tmdbId, label);
     } catch (e) {
       failed.push(label);
       console.log(`FAIL  ${label}: ${(e as Error).message}`);
     }
-    await sleep(400);
   }
 
-  console.log(`\nImported ${ok}/${CATALOG.length}.`);
+  // 2) fill up to the targets with TMDB's top rated
+  const targets: Record<Kind, number> = {
+    MOVIE: TARGET_MOVIES,
+    SERIES: TARGET_SERIES,
+  };
+  if (!TMDB_TOKEN) {
+    console.log('\nTMDB_API_TOKEN not set: skipping the top rated fill-up.');
+  } else {
+    for (const type of ['MOVIE', 'SERIES'] as const) {
+      for (let page = 1; count[type] < targets[type] && page <= 50; page++) {
+        for (const item of await topRated(type, page)) {
+          if (count[type] >= targets[type]) break;
+          if (seen.has(`${type}:${item.id}`)) continue;
+          await importOne(
+            type,
+            item.id,
+            `${item.title ?? item.name} [top rated]`,
+          );
+        }
+      }
+    }
+  }
+
+  console.log(
+    `\nImported ${count.MOVIE} movies and ${count.SERIES} series (targets: ${TARGET_MOVIES}/${TARGET_SERIES}).`,
+  );
   if (failed.length) console.log(`Failed:\n - ${failed.join('\n - ')}`);
+}
+
+interface TopRatedItem {
+  id: number;
+  title?: string;
+  name?: string;
+}
+
+async function topRated(type: Kind, page: number): Promise<TopRatedItem[]> {
+  const kind = type === 'MOVIE' ? 'movie' : 'tv';
+  const res = await fetch(
+    `https://api.themoviedb.org/3/${kind}/top_rated?language=en-US&page=${page}`,
+    { headers: { Authorization: `Bearer ${TMDB_TOKEN}` } },
+  );
+  if (!res.ok) throw new Error(`TMDB top_rated responded with ${res.status}`);
+  return ((await res.json()) as { results?: TopRatedItem[] }).results ?? [];
 }
 
 main().catch((e: unknown) => {
