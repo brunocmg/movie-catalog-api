@@ -13,6 +13,9 @@
  * Re-running is safe: existing titles are refreshed, not duplicated.
  */
 
+// loads TMDB_API_TOKEN (and the others, if present) from .env
+import 'dotenv/config';
+
 type Kind = 'MOVIE' | 'SERIES';
 type Entry = [kind: Kind, name: string, year: number];
 
@@ -142,6 +145,12 @@ function pick(results: SearchResult[], name: string, year: number) {
 async function main() {
   if (!API_URL || !EMAIL || !PASSWORD) {
     throw new Error('Set API_URL, ADMIN_EMAIL and ADMIN_PASSWORD.');
+  }
+
+  if (!TMDB_TOKEN) {
+    console.warn(
+      'WARNING: TMDB_API_TOKEN is not set, so only the curated list (~59 titles) will be imported. Set it in .env or the shell to reach the targets.',
+    );
   }
 
   console.log(`Logging in at ${API_URL} ...`);
