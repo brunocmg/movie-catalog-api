@@ -1,5 +1,7 @@
 # Movie Catalog API
 
+[![CI](https://github.com/brunocmg/movie-catalog-api/actions/workflows/ci.yml/badge.svg)](https://github.com/brunocmg/movie-catalog-api/actions/workflows/ci.yml)
+
 A REST API for a movie and series catalog: browse and search titles, rate and review them, and keep personal lists (watched, favorites, watchlist, custom lists), with stats and recommendations based on your taste.
 
 Built with **NestJS**, **TypeScript**, **Prisma** and **PostgreSQL**, and deployed on Render with continuous deployment gated by CI.
@@ -323,7 +325,7 @@ src/
 └── common/         # filters, pipes, DTOs, throttling, utils
 prisma/             # schema, migrations and seed
 test/               # E2E tests
-docs/               # images and roadmap
+docs/               # images
 ```
 
 ## Credits
