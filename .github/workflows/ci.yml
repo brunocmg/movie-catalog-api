@@ -81,4 +81,4 @@ jobs:
             echo "::error::RENDER_DEPLOY_HOOK_URL secret is not set"
             exit 1
           fi
-          curl -fsS -m 30 -X POST "$RENDER_DEPLOY_HOOK_URL?ref=$GITHUB_SHA" > /dev/null
+          curl -fsS -m 30 -X POST "$RENDER_DEPLOY_HOOK_URL&ref=$GITHUB_SHA" > /dev/null
