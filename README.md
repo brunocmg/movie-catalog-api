@@ -281,11 +281,11 @@ Hosted on [Render](https://render.com) (web service, configured in [render.yaml]
 flowchart LR
   PR[Pull request] --> CI[CI: lint, build, unit, E2E, Docker]
   CI -->|merge to main| CImain[CI on main]
-  CImain -->|checks pass| Render[Render build + prisma migrate deploy]
+  CImain -->|deploy hook| Render[Render build + prisma migrate deploy]
   Render --> Check[Deploy check: /health serves the new commit + smoke test]
 ```
 
-- Render deploys only after the CI checks pass on `main`.
+- Render has auto-deploy turned off. The CI workflow calls a Render deploy hook only after lint, build, tests and the Docker build pass on `main`. The hook URL is stored in the `RENDER_DEPLOY_HOOK_URL` secret.
 - Migrations run before the app starts, and Render only switches traffic once `/health` answers.
 - The **Deploy check** workflow waits until `/health` reports the merged commit, then runs a smoke test against production.
 - The development seed refuses to run when `NODE_ENV=production`, so production accounts are created through `POST /users`.
